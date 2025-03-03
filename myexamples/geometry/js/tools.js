@@ -699,6 +699,72 @@ class GeometryTools {
             return false;
         }
         
+        // Handle rectangle and triangle completion
+        if ((this.currentTool === 'rectangle' || this.currentTool === 'triangle') && 
+            this.points.length === 1 && this.toolState === CONFIG.tools.status.ACTIVE) {
+            try {
+                if (this.currentTool === 'rectangle') {
+                    const p1 = this.points[0];
+                    const p2 = this.board.create('point', coords);
+                    const p3 = this.board.create('point', [p2.X(), p1.Y()]);
+                    const p4 = this.board.create('point', [p1.X(), p2.Y()]);
+                    
+                    const polygon = this.board.create('polygon', [p1, p3, p2, p4]);
+                    if (!polygon) throw new Error('Failed to create rectangle');
+                    
+                    // Show dimensions
+                    const width = Math.abs(p2.X() - p1.X());
+                    const height = Math.abs(p2.Y() - p1.Y());
+                    this.board.create('text', [
+                        (p1.X() + p2.X())/2, p1.Y() - 0.5,
+                        `w = ${width.toFixed(1)}`
+                    ], {fontSize: 12});
+                    this.board.create('text', [
+                        p1.X() - 0.5, (p1.Y() + p2.Y())/2,
+                        `h = ${height.toFixed(1)}`
+                    ], {fontSize: 12});
+                    
+                    Logger.debug('Created rectangle', { width, height });
+                } else { // triangle
+                    const p1 = this.points[0];
+                    const p2 = this.board.create('point', coords);
+                    
+                    const dist = Math.sqrt(
+                        Math.pow(coords[0] - p1.X(), 2) +
+                        Math.pow(coords[1] - p1.Y(), 2)
+                    );
+                    const angle = Math.atan2(coords[1] - p1.Y(), coords[0] - p1.X());
+                    
+                    // Calculate third point (60 degrees from base)
+                    const x3 = p1.X() + dist * Math.cos(angle + Math.PI / 3);
+                    const y3 = p1.Y() + dist * Math.sin(angle + Math.PI / 3);
+                    const p3 = this.board.create('point', [x3, y3]);
+                    
+                    const polygon = this.board.create('polygon', [p1, p2, p3]);
+                    if (!polygon) throw new Error('Failed to create triangle');
+                    
+                    // Show side length
+                    this.board.create('text', [
+                        (p1.X() + p2.X())/2, (p1.Y() + p2.Y())/2,
+                        `a = ${dist.toFixed(1)}`
+                    ], {fontSize: 12});
+                    
+                    Logger.debug('Created triangle', { sideLength: dist });
+                }
+                
+                this.points = [];
+                this.toolState = CONFIG.tools.status.PENDING;
+                this.clearTemporary();
+                return true;
+            } catch (error) {
+                Logger.error(`Error creating ${this.currentTool}:`, error);
+                this.clearTemporary();
+                this.points = [];
+                this.toolState = CONFIG.tools.status.PENDING;
+                return false;
+            }
+        }
+        
         let objectCreated = false;
         
         switch (this.currentTool) {
