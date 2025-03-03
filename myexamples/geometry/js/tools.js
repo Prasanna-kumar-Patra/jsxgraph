@@ -201,6 +201,8 @@ class GeometryTools {
                 
             case 'polygon':
             case 'regular_polygon':
+            case 'rectangle':
+            case 'triangle':
                 try {
                     if (this.toolState === CONFIG.tools.status.PENDING) {
                         if (this.currentTool === 'regular_polygon') {
@@ -214,6 +216,13 @@ class GeometryTools {
                                 this.toolState = CONFIG.tools.status.ACTIVE;
                                 Logger.debug('Started regular polygon', { sides });
                             }
+                        } else if (this.currentTool === 'rectangle' || this.currentTool === 'triangle') {
+                            const point = this.board.create('point', coords);
+                            if (!point) throw new Error('Failed to create first point');
+                            
+                            this.points = [point];
+                            this.toolState = CONFIG.tools.status.ACTIVE;
+                            Logger.debug(`Started ${this.currentTool}`);
                         } else {
                             // Check if we're closing the polygon
                             if (this.points.length >= 3) {
@@ -272,6 +281,42 @@ class GeometryTools {
                         center.remove();
                         this.points = [];
                         this.polygonSides = null;
+                        this.toolState = CONFIG.tools.status.PENDING;
+                    } else if (this.currentTool === 'rectangle' && this.points.length === 1) {
+                        const p1 = this.points[0];
+                        const p2 = this.board.create('point', coords);
+                        
+                        // Calculate rectangle vertices
+                        const dx = p2.X() - p1.X();
+                        const dy = p2.Y() - p1.Y();
+                        
+                        const p3 = this.board.create('point', [p2.X(), p1.Y()]);
+                        const p4 = this.board.create('point', [p1.X(), p2.Y()]);
+                        
+                        const polygon = this.board.create('polygon', [p1, p3, p2, p4]);
+                        if (!polygon) throw new Error('Failed to create rectangle');
+                        
+                        Logger.debug('Created rectangle');
+                        this.points = [];
+                        this.toolState = CONFIG.tools.status.PENDING;
+                    } else if (this.currentTool === 'triangle' && this.points.length === 1) {
+                        const p1 = this.points[0];
+                        const p2 = this.board.create('point', coords);
+                        
+                        // For triangle, let user specify second point and create an equilateral triangle
+                        const dist = p1.Dist(p2);
+                        const angle = Math.atan2(p2.Y() - p1.Y(), p2.X() - p1.X());
+                        
+                        // Calculate third point (60 degrees from base)
+                        const x3 = p1.X() + dist * Math.cos(angle + Math.PI / 3);
+                        const y3 = p1.Y() + dist * Math.sin(angle + Math.PI / 3);
+                        const p3 = this.board.create('point', [x3, y3]);
+                        
+                        const polygon = this.board.create('polygon', [p1, p2, p3]);
+                        if (!polygon) throw new Error('Failed to create triangle');
+                        
+                        Logger.debug('Created triangle');
+                        this.points = [];
                         this.toolState = CONFIG.tools.status.PENDING;
                     }
                 } catch (error) {
@@ -475,6 +520,8 @@ class GeometryTools {
                 
             case 'polygon':
             case 'regular_polygon':
+            case 'rectangle':
+            case 'triangle':
                 this.tempObjects.push(this.board.create('point', coords, {visible: false}));
                 if (this.currentTool === 'regular_polygon' && this.points.length === 1) {
                     const center = this.points[0];
@@ -497,7 +544,74 @@ class GeometryTools {
                         this.tempObjects.push(this.board.create('segment', 
                             [vertices[i], vertices[(i + 1) % this.polygonSides]], {dash: 2}));
                     }
-                } else {
+                } else if (this.currentTool === 'rectangle' && this.points.length === 1) {
+                    const p1 = this.points[0];
+                    const p2 = coords;
+                    
+                    // Calculate rectangle vertices
+                    const vertices = [
+                        p1,
+                        this.board.create('point', [p2[0], p1.Y()], {visible: false}),
+                        this.board.create('point', [p2[0], p2[1]], {visible: false}),
+                        this.board.create('point', [p1.X(), p2[1]], {visible: false})
+                    ];
+                    
+                    // Add vertices to temp objects
+                    vertices.slice(1).forEach(v => this.tempObjects.push(v));
+                    
+                    // Create segments
+                    for (let i = 0; i < 4; i++) {
+                        this.tempObjects.push(this.board.create('segment', 
+                            [vertices[i], vertices[(i + 1) % 4]], {dash: 2}));
+                    }
+                    
+                    // Show dimensions
+                    const width = Math.abs(p2[0] - p1.X());
+                    const height = Math.abs(p2[1] - p1.Y());
+                    this.tempObjects.push(this.board.create('text', [
+                        (p1.X() + p2[0])/2, p1.Y() - 0.5,
+                        `w = ${width.toFixed(1)}`
+                    ], {fontSize: 12}));
+                    this.tempObjects.push(this.board.create('text', [
+                        p1.X() - 0.5, (p1.Y() + p2[1])/2,
+                        `h = ${height.toFixed(1)}`
+                    ], {fontSize: 12}));
+                } else if (this.currentTool === 'triangle' && this.points.length === 1) {
+                    const p1 = this.points[0];
+                    const p2 = coords;
+                    
+                    // Calculate equilateral triangle vertices
+                    const dist = Math.sqrt(
+                        Math.pow(p2[0] - p1.X(), 2) +
+                        Math.pow(p2[1] - p1.Y(), 2)
+                    );
+                    const angle = Math.atan2(p2[1] - p1.Y(), p2[0] - p1.X());
+                    
+                    // Calculate third point (60 degrees from base)
+                    const x3 = p1.X() + dist * Math.cos(angle + Math.PI / 3);
+                    const y3 = p1.Y() + dist * Math.sin(angle + Math.PI / 3);
+                    
+                    const vertices = [
+                        p1,
+                        this.board.create('point', [p2[0], p2[1]], {visible: false}),
+                        this.board.create('point', [x3, y3], {visible: false})
+                    ];
+                    
+                    // Add vertices to temp objects
+                    vertices.slice(1).forEach(v => this.tempObjects.push(v));
+                    
+                    // Create segments
+                    for (let i = 0; i < 3; i++) {
+                        this.tempObjects.push(this.board.create('segment', 
+                            [vertices[i], vertices[(i + 1) % 3]], {dash: 2}));
+                    }
+                    
+                    // Show side length
+                    this.tempObjects.push(this.board.create('text', [
+                        (p1.X() + p2[0])/2, (p1.Y() + p2[1])/2,
+                        `a = ${dist.toFixed(1)}`
+                    ], {fontSize: 12}));
+                } else if (this.currentTool === 'polygon') {
                     // Show preview of polygon being drawn
                     const vertices = [...this.points, this.tempObjects[0]];
                     for (let i = 0; i < vertices.length - 1; i++) {
