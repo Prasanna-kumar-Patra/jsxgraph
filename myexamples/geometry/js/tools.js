@@ -522,6 +522,7 @@ class GeometryTools {
             case 'regular_polygon':
             case 'rectangle':
             case 'triangle':
+            case 'quadrilateral':
                 this.tempObjects.push(this.board.create('point', coords, {visible: false}));
                 if (this.currentTool === 'regular_polygon' && this.points.length === 1) {
                     const center = this.points[0];
@@ -769,8 +770,21 @@ class GeometryTools {
         
         switch (this.currentTool) {
             case 'polygon':
-                // Check if click is near the first point to close the polygon
-                if (this.points.length >= 3) {
+            case 'quadrilateral':
+                // For quadrilateral, automatically close after 4 points
+                if (this.currentTool === 'quadrilateral' && this.points.length === 3) {
+                    const newPoint = this.board.create('point', coords);
+                    this.points.push(newPoint);
+                    Logger.debug('Creating quadrilateral', { points: this.points.length });
+                    this.board.create('polygon', this.points);
+                    this.toolState = CONFIG.tools.status.PENDING;
+                    this.points = [];
+                    objectCreated = true;
+                    break;
+                }
+                
+                // For regular polygon, check if click is near first point to close
+                if (this.currentTool === 'polygon' && this.points.length >= 3) {
                     const firstPoint = this.points[0];
                     const dx = coords[0] - firstPoint.X();
                     const dy = coords[1] - firstPoint.Y();
@@ -780,8 +794,15 @@ class GeometryTools {
                         this.toolState = CONFIG.tools.status.PENDING;
                         this.points = [];
                         objectCreated = true;
+                        break;
                     }
                 }
+                
+                // Add new point if not closing
+                const newPoint = this.board.create('point', coords);
+                this.points.push(newPoint);
+                this.toolState = CONFIG.tools.status.ACTIVE;
+                objectCreated = true;
                 break;
                 
             case 'point':
