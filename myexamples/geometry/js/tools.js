@@ -100,19 +100,38 @@ class GeometryTools {
             case 'segment':
             case 'ray':
             case 'vector':
-                if (this.toolState === CONFIG.tools.status.PENDING) {
-                    this.points.push(this.board.create('point', coords));
-                    this.toolState = CONFIG.tools.status.ACTIVE;
-                } else {
-                    this.points.push(this.board.create('point', coords));
-                    const props = {
-                        straightFirst: this.currentTool === 'line',
-                        straightLast: this.currentTool !== 'segment',
-                        lastArrow: this.currentTool === 'vector'
-                    };
-                    this.board.create('line', this.points, props);
-                    this.toolState = CONFIG.tools.status.PENDING;
+                try {
+                    if (this.toolState === CONFIG.tools.status.PENDING) {
+                        const point = this.board.create('point', coords);
+                        if (!point) throw new Error('Failed to create first point');
+                        
+                        this.points = [point]; // Reset points array with new point
+                        this.toolState = CONFIG.tools.status.ACTIVE;
+                        Logger.debug('Created first point for line-type tool', { coords });
+                    } else {
+                        const point = this.board.create('point', coords);
+                        if (!point) throw new Error('Failed to create second point');
+                        
+                        if (!this.points[0]) throw new Error('First point is missing');
+                        
+                        const props = {
+                            straightFirst: this.currentTool === 'line',
+                            straightLast: this.currentTool !== 'segment',
+                            lastArrow: this.currentTool === 'vector'
+                        };
+                        
+                        const line = this.board.create('line', [this.points[0], point], props);
+                        if (!line) throw new Error('Failed to create line');
+                        
+                        Logger.debug('Created line-type object', { type: this.currentTool });
+                        this.toolState = CONFIG.tools.status.PENDING;
+                        this.points = [];
+                    }
+                } catch (error) {
+                    Logger.error('Error in line tool:', error);
+                    this.clearTemporary();
                     this.points = [];
+                    this.toolState = CONFIG.tools.status.PENDING;
                 }
                 break;
                 
@@ -182,49 +201,88 @@ class GeometryTools {
                 
             case 'polygon':
             case 'regular_polygon':
-                if (this.toolState === CONFIG.tools.status.PENDING) {
-                    if (this.currentTool === 'regular_polygon') {
-                        const sides = parseInt(prompt('Enter number of sides (3-12):', '6'));
-                        if (!isNaN(sides) && sides >= 3 && sides <= 12) {
-                            this.polygonSides = sides;
-                            this.points.push(this.board.create('point', coords));
+                try {
+                    if (this.toolState === CONFIG.tools.status.PENDING) {
+                        if (this.currentTool === 'regular_polygon') {
+                            const sides = parseInt(prompt('Enter number of sides (3-12):', '6'));
+                            if (!isNaN(sides) && sides >= 3 && sides <= 12) {
+                                this.polygonSides = sides;
+                                const point = this.board.create('point', coords);
+                                if (!point) throw new Error('Failed to create center point');
+                                
+                                this.points = [point];
+                                this.toolState = CONFIG.tools.status.ACTIVE;
+                                Logger.debug('Started regular polygon', { sides });
+                            }
+                        } else {
+                            // Check if we're closing the polygon
+                            if (this.points.length >= 3) {
+                                const clickedPoint = this.getClickedPoint(clickedObjects);
+                                if (clickedPoint && this.isNearPoint(clickedPoint, this.points[0])) {
+                                    Logger.debug('Closing polygon', { vertices: this.points.length });
+                                    const polygon = this.board.create('polygon', this.points);
+                                    if (!polygon) throw new Error('Failed to create polygon');
+                                    
+                                    this.points = [];
+                                    this.toolState = CONFIG.tools.status.PENDING;
+                                    break;
+                                }
+                            }
+                            
+                            // Add new vertex
+                            const point = this.board.create('point', coords);
+                            if (!point) throw new Error('Failed to create polygon vertex');
+                            
+                            this.points.push(point);
                             this.toolState = CONFIG.tools.status.ACTIVE;
+                            Logger.debug('Added polygon vertex', { vertices: this.points.length });
                         }
-                    } else {
-                        this.points.push(this.board.create('point', coords));
-                        this.toolState = CONFIG.tools.status.ACTIVE;
+                    } else if (this.currentTool === 'regular_polygon' && this.points.length === 1) {
+                        const center = this.points[0];
+                        if (!center) throw new Error('Missing center point');
+                        
+                        const vertex = this.board.create('point', coords);
+                        if (!vertex) throw new Error('Failed to create vertex point');
+                        
+                        const radius = center.Dist(vertex);
+                        const angle = Math.atan2(vertex.Y() - center.Y(), vertex.X() - center.X());
+                        
+                        const vertices = [vertex];
+                        // Create vertices for regular polygon
+                        for (let i = 1; i < this.polygonSides; i++) {
+                            const newAngle = angle + (2 * Math.PI * i) / this.polygonSides;
+                            const x = center.X() + radius * Math.cos(newAngle);
+                            const y = center.Y() + radius * Math.sin(newAngle);
+                            const point = this.board.create('point', [x, y]);
+                            if (!point) throw new Error(`Failed to create vertex ${i}`);
+                            vertices.push(point);
+                        }
+                        
+                        // Create the polygon
+                        const polygon = this.board.create('polygon', vertices);
+                        if (!polygon) throw new Error('Failed to create regular polygon');
+                        
+                        Logger.debug('Created regular polygon', { 
+                            sides: this.polygonSides,
+                            radius,
+                            center: [center.X(), center.Y()]
+                        });
+                        
+                        // Cleanup
+                        center.remove();
+                        this.points = [];
+                        this.polygonSides = null;
+                        this.toolState = CONFIG.tools.status.PENDING;
                     }
-                } else if (this.currentTool === 'regular_polygon' && this.points.length === 1) {
-                    const center = this.points[0];
-                    const vertex = this.board.create('point', coords);
-                    const radius = center.Dist(vertex);
-                    const angle = Math.atan2(vertex.Y() - center.Y(), vertex.X() - center.X());
-                    
-                    const vertices = [vertex];
-                    for (let i = 1; i < this.polygonSides; i++) {
-                        const newAngle = angle + (2 * Math.PI * i) / this.polygonSides;
-                        const x = center.X() + radius * Math.cos(newAngle);
-                        const y = center.Y() + radius * Math.sin(newAngle);
-                        vertices.push(this.board.create('point', [x, y]));
-                    }
-                    
-                    this.board.create('polygon', vertices);
-                    center.remove();
+                } catch (error) {
+                    Logger.error('Error in polygon tool:', error);
+                    this.clearTemporary();
                     this.points = [];
                     this.polygonSides = null;
                     this.toolState = CONFIG.tools.status.PENDING;
-                } else {
-                    const clickedPoint = this.getClickedPoint(clickedObjects);
-                    if (clickedPoint === this.points[0] && this.points.length > 2) {
-                        this.board.create('polygon', this.points);
-                        this.points = [];
-                        this.toolState = CONFIG.tools.status.PENDING;
-                    } else {
-                        this.points.push(this.board.create('point', coords));
-                    }
                 }
                 break;
-                
+
             case 'perpendicular':
             case 'parallel':
                 if (this.toolState === CONFIG.tools.status.PENDING) {
@@ -335,31 +393,18 @@ class GeometryTools {
 
     // Handle mouse/touch move event
     handleMove(e) {
-        if (!this.currentTool) {
-            Logger.debug('No tool selected, ignoring move event');
-            return;
-        }
+        if (!this.currentTool) return;
         
         const coords = this.board.getUsrCoordsOfMouse(e);
-        Logger.debug('Handle move event', {
-            tool: this.currentTool,
-            coords,
-            isDragging: this.isDragging,
-            state: this.toolState
-        });
         
         // Handle move tool dragging
         if (this.currentTool === 'move' && this.isDragging) {
-            Logger.debug('Moving object');
             // JSXGraph handles the actual movement
             return;
         }
         
         // Don't show previews unless we're in an active state
-        if (this.toolState !== CONFIG.tools.status.ACTIVE) {
-            Logger.debug('Tool not active, skipping preview');
-            return;
-        }
+        if (this.toolState !== CONFIG.tools.status.ACTIVE) return;
         
         // Clear any temporary objects
         this.clearTemporary();
@@ -369,14 +414,25 @@ class GeometryTools {
             case 'segment':
             case 'ray':
             case 'vector':
-                this.tempObjects.push(this.board.create('point', coords, {visible: false}));
-                const lineProps = {
-                    dash: 2,
-                    straightFirst: this.currentTool === 'line',
-                    straightLast: this.currentTool !== 'segment',
-                    lastArrow: this.currentTool === 'vector'
-                };
-                this.tempObjects.push(this.board.create('line', [this.points[0], this.tempObjects[0]], lineProps));
+                if (this.points.length > 0 && this.points[0]) {
+                    const tempPoint = this.board.create('point', coords, {visible: false});
+                    this.tempObjects.push(tempPoint);
+                    
+                    const lineProps = {
+                        dash: 2,
+                        straightFirst: this.currentTool === 'line',
+                        straightLast: this.currentTool !== 'segment',
+                        lastArrow: this.currentTool === 'vector'
+                    };
+                    
+                    try {
+                        const line = this.board.create('line', [this.points[0], tempPoint], lineProps);
+                        this.tempObjects.push(line);
+                    } catch (error) {
+                        Logger.error('Failed to create line preview:', error);
+                        this.clearTemporary(); // Clean up on error
+                    }
+                }
                 break;
                 
             case 'segment_fixed':
@@ -595,5 +651,19 @@ class GeometryTools {
             if (obj && obj.remove) obj.remove();
         });
         this.tempObjects = [];
+    }
+    
+    // Helper function to get a clicked point from a list of objects
+    getClickedPoint(objects) {
+        if (!objects || !Array.isArray(objects)) return null;
+        return objects.find(obj => obj.elType === 'point');
+    }
+    
+    // Helper function to check if a point is near another point
+    isNearPoint(point1, point2, threshold = 0.5) {
+        if (!point1 || !point2) return false;
+        const dx = point1.X() - point2.X();
+        const dy = point1.Y() - point2.Y();
+        return Math.sqrt(dx * dx + dy * dy) < threshold;
     }
 }
