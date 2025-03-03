@@ -328,21 +328,111 @@ class GeometryTools {
 
             case 'perpendicular':
             case 'parallel':
+            case 'midpoint':
+            case 'intersection':
                 if (this.toolState === CONFIG.tools.status.PENDING) {
-                    const line = clickedObjects.find(obj => obj.elType === 'line');
-                    if (line) {
-                        this.selectedObjects = [line];
+                    // Find nearest line or point
+                    const nearestObject = this.findNearestObject(coords, clickedObjects);
+                    if (nearestObject) {
+                        this.selectedObjects = [nearestObject];
                         this.toolState = CONFIG.tools.status.ACTIVE;
+                        Logger.debug(`Selected first object for ${this.currentTool}`, nearestObject);
                     }
-                } else {
-                    const point = this.board.create('point', coords);
-                    if (this.currentTool === 'perpendicular') {
-                        this.board.create('perpendicular', [this.selectedObjects[0], point]);
-                    } else {
-                        this.board.create('parallel', [this.selectedObjects[0], point]);
+                } else if (this.toolState === CONFIG.tools.status.ACTIVE) {
+                    const nearestObject = this.findNearestObject(coords, clickedObjects);
+                    if (nearestObject) {
+                        try {
+                            let constructedObject;
+                            const obj1 = this.selectedObjects[0];
+                            const obj2 = nearestObject;
+                            
+                            if (this.currentTool === 'perpendicular') {
+                                if ((obj1.elType === 'line' || obj1.elType === 'segment') && 
+                                    obj2.elType === 'point') {
+                                    // First object is line, second is point
+                                    constructedObject = this.board.create('perpendicular', 
+                                        [obj1, obj2], {
+                                            strokeColor: '#0000ff',
+                                            strokeWidth: 2
+                                        });
+                                } else if (obj1.elType === 'point' && 
+                                         (obj2.elType === 'line' || obj2.elType === 'segment')) {
+                                    // First object is point, second is line
+                                    constructedObject = this.board.create('perpendicular', 
+                                        [obj2, obj1], {
+                                            strokeColor: '#0000ff',
+                                            strokeWidth: 2
+                                        });
+                                }
+                            } else if (this.currentTool === 'parallel') {
+                                if ((obj1.elType === 'line' || obj1.elType === 'segment') && 
+                                    obj2.elType === 'point') {
+                                    // First object is line, second is point
+                                    constructedObject = this.board.create('parallel', 
+                                        [obj1, obj2], {
+                                            strokeColor: '#0000ff',
+                                            strokeWidth: 2
+                                        });
+                                } else if (obj1.elType === 'point' && 
+                                         (obj2.elType === 'line' || obj2.elType === 'segment')) {
+                                    // First object is point, second is line
+                                    constructedObject = this.board.create('parallel', 
+                                        [obj2, obj1], {
+                                            strokeColor: '#0000ff',
+                                            strokeWidth: 2
+                                        });
+                                }
+                            } else if (this.currentTool === 'midpoint') {
+                                if (obj1.elType === 'point' && obj2.elType === 'point') {
+                                    // Create midpoint between two points
+                                    const x = (obj1.X() + obj2.X()) / 2;
+                                    const y = (obj1.Y() + obj2.Y()) / 2;
+                                    
+                                    constructedObject = this.board.create('point', [x, y], {
+                                        name: 'M',
+                                        fixed: true,
+                                        strokeColor: '#0000ff',
+                                        fillColor: '#0000ff',
+                                        size: 4
+                                    });
+                                } else if ((obj1.elType === 'line' || obj1.elType === 'segment')) {
+                                    // Create midpoint of a line/segment
+                                    constructedObject = this.board.create('point', [
+                                        (obj1.point1.X() + obj1.point2.X()) / 2,
+                                        (obj1.point1.Y() + obj1.point2.Y()) / 2
+                                    ], {
+                                        name: 'M',
+                                        fixed: true,
+                                        strokeColor: '#0000ff',
+                                        fillColor: '#0000ff',
+                                        size: 4
+                                    });
+                                }
+                            } else if (this.currentTool === 'intersection') {
+                                if ((obj1.elType === 'line' || obj1.elType === 'segment') && 
+                                    (obj2.elType === 'line' || obj2.elType === 'segment')) {
+                                    constructedObject = this.board.create('intersection', 
+                                        [obj1, obj2, 0], {
+                                            strokeColor: '#0000ff',
+                                            fillColor: '#0000ff',
+                                            size: 4
+                                        });
+                                }
+                            }
+                            
+                            if (!constructedObject) {
+                                throw new Error('Invalid object types for construction');
+                            }
+                            
+                            Logger.debug(`Created ${this.currentTool}`, constructedObject);
+                        } catch (error) {
+                            Logger.error(`Failed to create ${this.currentTool}:`, error);
+                            alert(`Could not create ${this.currentTool}. Please check the selected objects.`);
+                        }
+                        
+                        this.selectedObjects = [];
+                        this.toolState = CONFIG.tools.status.PENDING;
                     }
-                    this.selectedObjects = [];
-                    this.toolState = CONFIG.tools.status.PENDING;
                 }
                 break;
                 
@@ -706,13 +796,36 @@ class GeometryTools {
             case 'perpendicular':
             case 'parallel':
                 if (this.selectedObjects.length === 1) {
-                    const line = this.selectedObjects[0];
-                    const point = this.board.create('point', coords, {visible: false});
-                    this.tempObjects.push(point);
-                    if (this.currentTool === 'perpendicular') {
-                        this.tempObjects.push(this.board.create('perpendicular', [line, point], {dash: 2}));
-                    } else {
-                        this.tempObjects.push(this.board.create('parallel', [line, point], {dash: 2}));
+                    const obj1 = this.selectedObjects[0];
+                    const tempPoint = this.board.create('point', coords, {visible: false});
+                    this.tempObjects.push(tempPoint);
+                    
+                    try {
+                        if (obj1.elType === 'point') {
+                            // If first object is a point, create a temporary line
+                            const tempLine = this.board.create('line', 
+                                [tempPoint, [tempPoint.X() + 1, tempPoint.Y()]], 
+                                {visible: false});
+                            this.tempObjects.push(tempLine);
+                            
+                            // Create perpendicular/parallel through the point
+                            const constructedLine = this.board.create(
+                                this.currentTool === 'perpendicular' ? 'perpendicular' : 'parallel',
+                                [tempLine, obj1],
+                                {dash: 2, strokeColor: '#0000ff', strokeWidth: 2}
+                            );
+                            this.tempObjects.push(constructedLine);
+                        } else if (obj1.elType === 'line' || obj1.elType === 'segment') {
+                            // If first object is a line, create perpendicular/parallel through temp point
+                            const constructedLine = this.board.create(
+                                this.currentTool === 'perpendicular' ? 'perpendicular' : 'parallel',
+                                [obj1, tempPoint],
+                                {dash: 2, strokeColor: '#0000ff', strokeWidth: 2}
+                            );
+                            this.tempObjects.push(constructedLine);
+                        }
+                    } catch (error) {
+                        Logger.error(`Error creating ${this.currentTool} preview:`, error);
                     }
                 }
                 break;
@@ -1025,5 +1138,23 @@ class GeometryTools {
         const dx = point1.X() - point2.X();
         const dy = point1.Y() - point2.Y();
         return Math.sqrt(dx * dx + dy * dy) < threshold;
+    }
+    
+    // Helper function to find nearest object of specified types
+    findNearestObject(coords, objects) {
+        if (!objects || !Array.isArray(objects)) return null;
+        
+        // First check for exact clicks on points or lines
+        const clickedObject = objects.find(obj => 
+            obj.elType === 'point' || 
+            obj.elType === 'line' || 
+            obj.elType === 'segment');
+            
+        if (clickedObject) {
+            Logger.debug('Found clicked object:', clickedObject);
+            return clickedObject;
+        }
+        
+        return null;
     }
 }
