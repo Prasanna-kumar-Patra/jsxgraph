@@ -830,6 +830,95 @@ class GeometryTools {
                 }
                 break;
                 
+            case 'rotate':
+            case 'translate':
+            case 'reflect':
+                if (this.toolState === CONFIG.tools.status.PENDING) {
+                    // Select object to transform
+                    const clickedObj = this.findNearestObject(coords, clickedObjects);
+                    if (clickedObj) {
+                        this.selectedObjects = [clickedObj];
+                        this.toolState = CONFIG.tools.status.ACTIVE;
+                        Logger.debug(`Selected object for ${this.currentTool}`, clickedObj);
+                    }
+                } else if (this.toolState === CONFIG.tools.status.ACTIVE) {
+                    try {
+                        const obj = this.selectedObjects[0];
+                        let newObj;
+
+                        // Create a copy of the original object
+                        if (obj.elType === 'point') {
+                            newObj = this.board.create('point', [obj.X(), obj.Y()], {
+                                name: obj.name + '′',
+                                strokeColor: '#0000ff',
+                                fillColor: '#0000ff',
+                                size: 4
+                            });
+                        } else if (obj.elType === 'line' || obj.elType === 'segment') {
+                            const p1 = this.board.create('point', [obj.point1.X(), obj.point1.Y()], {
+                                visible: false,
+                                fixed: true
+                            });
+                            const p2 = this.board.create('point', [obj.point2.X(), obj.point2.Y()], {
+                                visible: false,
+                                fixed: true
+                            });
+                            newObj = this.board.create(obj.elType, [p1, p2], {
+                                name: obj.name + '′',
+                                strokeColor: '#0000ff',
+                                strokeWidth: 2
+                            });
+                        }
+
+                        if (newObj) {
+                            if (this.currentTool === 'rotate') {
+                                // Create rotation center and transform
+                                const center = this.board.create('point', coords, {
+                                    name: 'C',
+                                    strokeColor: '#0000ff',
+                                    fillColor: '#0000ff',
+                                    size: 4
+                                });
+                                const angle = Math.PI / 2; // 90 degrees
+                                const transform = this.board.create('transform', [angle, center], {type: 'rotate'});
+                                transform.bindTo(newObj);
+                            } else if (this.currentTool === 'translate') {
+                                // Create translation vector and transform
+                                const dx = coords[0] - obj.X();
+                                const dy = coords[1] - obj.Y();
+                                const transform = this.board.create('transform', [dx, dy], {type: 'translate'});
+                                transform.bindTo(newObj);
+                                
+                                // Show translation vector
+                                this.board.create('arrow', [obj, coords], {
+                                    strokeColor: '#0000ff',
+                                    strokeWidth: 2,
+                                    dash: 2
+                                });
+                            } else if (this.currentTool === 'reflect') {
+                                // Create reflection line and transform
+                                const reflectLine = this.board.create('line', 
+                                    [[coords[0] - 2, coords[1]], [coords[0] + 2, coords[1]]], {
+                                        name: 'l',
+                                        strokeColor: '#0000ff',
+                                        strokeWidth: 2
+                                    });
+                                const transform = this.board.create('transform', [reflectLine], {type: 'reflect'});
+                                transform.bindTo(newObj);
+                            }
+                        }
+                        
+                        this.selectedObjects = [];
+                        this.toolState = CONFIG.tools.status.PENDING;
+                    } catch (error) {
+                        Logger.error(`Error applying ${this.currentTool} transform:`, error);
+                        alert(`Could not apply ${this.currentTool} transform. Please try again.`);
+                        this.selectedObjects = [];
+                        this.toolState = CONFIG.tools.status.PENDING;
+                    }
+                }
+                break;
+                
             case 'angle':
             case 'angle_fixed':
                 if (this.points.length === 1) {
