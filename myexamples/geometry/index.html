@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSXGraph Geometry</title>
+    
+    <!-- JSXGraph CSS and JS -->
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/jsxgraph@1.5.0/distrib/jsxgraph.css" />
+    <script src="https://cdn.jsdelivr.net/npm/jsxgraph@1.5.0/distrib/jsxgraphcore.js"></script>
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Top Navigation Bar -->
+    <nav class="top-nav">
+        <div class="nav-left">
+            <button id="menuToggle" class="icon-button">
+                <img src="icons/menu.svg" alt="Menu">
+            </button>
+            <h1>Geometry</h1>
+        </div>
+        <div class="nav-right">
+            <button class="icon-button">
+                <img src="icons/share.svg" alt="Share">
+            </button>
+            <button class="icon-button">
+                <img src="icons/assignment.svg" alt="Assignment">
+            </button>
+            <button class="icon-button">
+                <img src="icons/signin.svg" alt="Sign In">
+            </button>
+        </div>
+    </nav>
+
+    <div class="main-container">
+        <!-- Left Sidebar -->
+        <div id="sidebar" class="sidebar">
+            <div class="sidebar-tabs">
+                <button class="tab-button active" data-tab="algebra">Algebra</button>
+                <button class="tab-button" data-tab="tools">Tools</button>
+            </div>
+            <div class="tab-content" id="algebraView">
+                <!-- Algebra view content will be populated dynamically -->
+            </div>
+            <div class="tab-content hidden" id="toolsView">
+                <!-- Tools will be populated dynamically -->
+            </div>
+        </div>
+
+        <!-- Main Canvas Area -->
+        <div class="canvas-container">
+            <div id="jxgbox" class="jxgbox"></div>
+            
+            <!-- Bottom Toolbar -->
+            <div class="bottom-toolbar">
+                <div class="tools-container">
+                    <!-- Tool buttons will be populated dynamically -->
+                </div>
+                <button id="toggleTools" class="toggle-button">
+                    <img src="icons/more.svg" alt="More tools">
+                </button>
+            </div>
+        </div>
+
+        <!-- Right Utility Buttons -->
+        <div class="utility-buttons">
+            <button class="icon-button" id="homeView">
+                <img src="icons/home.svg" alt="Home view">
+            </button>
+            <button class="icon-button" id="zoomIn">
+                <img src="icons/zoom_in.svg" alt="Zoom in">
+            </button>
+            <button class="icon-button" id="zoomOut">
+                <img src="icons/zoom_out.svg" alt="Zoom out">
+            </button>
+            <button class="icon-button" id="fullscreen">
+                <img src="icons/fullscreen.svg" alt="Fullscreen">
+            </button>
+        </div>
+    </div>
+
+    <!-- Application Scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/tools.js"></script>
+    <script src="js/board.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
