@@ -161,6 +161,9 @@ class GeometryTools {
             case 'circle':
             case 'circle_radius':
             case 'circle_three_points':
+            case 'semicircle':
+            case 'circular_arc':
+            case 'circular_sector':
                 if (this.toolState === CONFIG.tools.status.PENDING) {
                     // Starting point for all circle types
                     const centerPoint = this.board.create('point', coords);
@@ -488,6 +491,9 @@ class GeometryTools {
             case 'circle':
             case 'circle_radius':
             case 'circle_three_points':
+            case 'semicircle':
+            case 'circular_arc':
+            case 'circular_sector':
                 if (this.points.length === 1 && this.toolState === CONFIG.tools.status.ACTIVE) {
                     this.tempObjects.push(this.board.create('point', coords, {visible: false}));
                     
@@ -531,6 +537,54 @@ class GeometryTools {
                         // Show circle preview
                         this.tempObjects.push(this.board.create('circumcircle', 
                             [this.points[0], this.tempObjects[0], p3], {dash: 2}));
+                    } else if (this.currentTool === 'semicircle') {
+                        // Show preview for semicircle
+                        this.tempObjects.push(this.board.create('semicircle', 
+                            [this.points[0], this.tempObjects[0]], {dash: 2}));
+                            
+                        // Show radius line
+                        this.tempObjects.push(this.board.create('segment', 
+                            [this.points[0], this.tempObjects[0]], {dash: 2}));
+                    } else if (this.currentTool === 'circular_arc' || this.currentTool === 'circular_sector') {
+                        // Calculate angles for preview
+                        const center = this.points[0];
+                        const startAngle = 0; // Fixed start angle at positive x-axis
+                        const endAngle = Math.atan2(coords[1] - center.Y(), coords[0] - center.X());
+                        const radius = Math.sqrt(
+                            Math.pow(coords[0] - center.X(), 2) + 
+                            Math.pow(coords[1] - center.Y(), 2)
+                        );
+                        
+                        // Show radius lines
+                        this.tempObjects.push(this.board.create('segment', 
+                            [center, this.tempObjects[0]], {dash: 2}));
+                        
+                        // Show preview
+                        if (this.currentTool === 'circular_arc') {
+                            this.tempObjects.push(this.board.create('arc', 
+                                [center, this.tempObjects[0], endAngle], {
+                                    dash: 2,
+                                    strokeColor: '#0000ff',
+                                    strokeWidth: 2
+                                }));
+                        } else {
+                            this.tempObjects.push(this.board.create('sector', 
+                                [center, this.tempObjects[0], endAngle], {
+                                    dash: 2,
+                                    fillColor: '#0000ff',
+                                    fillOpacity: 0.1,
+                                    strokeColor: '#0000ff',
+                                    strokeWidth: 2
+                                }));
+                        }
+                        
+                        // Show angle value
+                        const angleDeg = Math.abs((endAngle * 180 / Math.PI)).toFixed(1);
+                        this.tempObjects.push(this.board.create('text', [
+                            center.X() + radius * Math.cos(endAngle/2) * 0.7,
+                            center.Y() + radius * Math.sin(endAngle/2) * 0.7,
+                            `${angleDeg}°`
+                        ], {fontSize: 12}));
                     }
                 }
                 break;
@@ -724,7 +778,9 @@ class GeometryTools {
         
         // Handle shape completion on mouse up
         if ((this.currentTool === 'rectangle' || this.currentTool === 'triangle' || 
-             this.currentTool === 'circle' || this.currentTool === 'circle_three_points') && 
+             this.currentTool === 'circle' || this.currentTool === 'circle_three_points' ||
+             this.currentTool === 'semicircle' || this.currentTool === 'circular_arc' ||
+             this.currentTool === 'circular_sector') && 
             this.points.length === 1 && this.toolState === CONFIG.tools.status.ACTIVE) {
             try {
                 if (this.currentTool === 'rectangle') {
@@ -804,6 +860,56 @@ class GeometryTools {
                     if (!circle) throw new Error('Failed to create three-point circle');
                     
                     Logger.debug('Created three-point circle');
+                } else if (this.currentTool === 'semicircle') {
+                    const p1 = this.points[0];
+                    const p2 = this.board.create('point', coords);
+                    
+                    const semicircle = this.board.create('semicircle', [p1, p2]);
+                    if (!semicircle) throw new Error('Failed to create semicircle');
+                    
+                    Logger.debug('Created semicircle');
+                } else if (this.currentTool === 'circular_arc' || this.currentTool === 'circular_sector') {
+                    const center = this.points[0];
+                    const p2 = this.board.create('point', coords);
+                    
+                    // Calculate radius and angles
+                    const radius = Math.sqrt(
+                        Math.pow(coords[0] - center.X(), 2) + 
+                        Math.pow(coords[1] - center.Y(), 2)
+                    );
+                    
+                    // Create points for the arc/sector
+                    const startAngle = 0; // Fixed start angle at positive x-axis
+                    const endAngle = Math.atan2(coords[1] - center.Y(), coords[0] - center.X());
+                    
+                    let shape;
+                    if (this.currentTool === 'circular_arc') {
+                        // Create arc from center through p2
+                        shape = this.board.create('arc', [center, p2, endAngle], {
+                            strokeColor: '#0000ff',
+                            strokeWidth: 2
+                        });
+                        if (!shape) throw new Error('Failed to create circular arc');
+                    } else {
+                        // Create sector from center through p2
+                        shape = this.board.create('sector', [center, p2, endAngle], {
+                            fillColor: '#0000ff',
+                            fillOpacity: 0.3,
+                            strokeColor: '#0000ff',
+                            strokeWidth: 2
+                        });
+                        if (!shape) throw new Error('Failed to create circular sector');
+                    }
+                    
+                    // Show angle value
+                    const angleDeg = Math.abs((endAngle * 180 / Math.PI)).toFixed(1);
+                    this.board.create('text', [
+                        center.X() + radius * Math.cos(endAngle/2) * 0.7,
+                        center.Y() + radius * Math.sin(endAngle/2) * 0.7,
+                        `${angleDeg}°`
+                    ], {fontSize: 12});
+                    
+                    Logger.debug(`Created ${this.currentTool}`, { angle: angleDeg });
                 }
                 
                 this.points = [];
