@@ -5,9 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JSXGraph Geometry</title>
     
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="icons/favicon.svg">
+    
     <!-- JSXGraph CSS and JS -->
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/jsxgraph@1.5.0/distrib/jsxgraph.css" />
     <script src="https://cdn.jsdelivr.net/npm/jsxgraph@1.5.0/distrib/jsxgraphcore.js"></script>
+    
+    <!-- Touch Events Support -->
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
     
     <!-- Custom CSS -->
     <link rel="stylesheet" href="css/style.css">
@@ -55,8 +61,20 @@
             
             <!-- Bottom Toolbar -->
             <div class="bottom-toolbar">
-                <div class="tools-container">
-                    <!-- Tool buttons will be populated dynamically -->
+                <div class="tools-wrapper">
+                    <div class="tools-categories">
+                        <button class="category-button active" data-category="basic">Basic</button>
+                        <button class="category-button" data-category="construct">Construct</button>
+                        <button class="category-button" data-category="measure">Measure</button>
+                        <button class="category-button" data-category="lines">Lines</button>
+                        <button class="category-button" data-category="circles">Circles</button>
+                        <button class="category-button" data-category="polygons">Polygons</button>
+                        <button class="category-button" data-category="transform">Transform</button>
+                        <button class="category-button" data-category="media">Media</button>
+                    </div>
+                    <div class="tools-container">
+                        <!-- Tool buttons will be populated dynamically -->
+                    </div>
                 </div>
                 <button id="toggleTools" class="toggle-button">
                     <img src="icons/more.svg" alt="More tools">
