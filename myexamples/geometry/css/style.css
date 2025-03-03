@@ -72,36 +72,50 @@ body {
     border-right: 1px solid #e0e0e0;
     display: flex;
     flex-direction: column;
+    transition: width 0.3s ease;
 }
 
-.sidebar-tabs {
+.sidebar.collapsed {
+    width: 72px;
+}
+
+.tools-wrapper,
+.algebra-wrapper {
     display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.tools-header,
+.algebra-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
     border-bottom: 1px solid #e0e0e0;
 }
 
-.tab-button {
-    flex: 1;
-    padding: 0.75rem;
-    border: none;
-    background: none;
-    cursor: pointer;
-    font-size: 0.9rem;
-    color: #666;
-    border-bottom: 2px solid transparent;
+.tools-header h2,
+.algebra-header h2 {
+    font-size: 16px;
+    font-weight: 500;
+    color: #202124;
+    margin: 0;
 }
 
-.tab-button.active {
-    color: #1a73e8;
-    border-bottom-color: #1a73e8;
-}
-
-.tab-content {
+.tools-container {
     flex: 1;
     overflow-y: auto;
-    padding: 1rem;
+    padding: 8px;
 }
 
-.tab-content.hidden {
+.algebra-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+}
+
+.hidden {
     display: none;
 }
 
@@ -119,74 +133,7 @@ body {
     border: none !important;
 }
 
-/* Bottom toolbar */
-.bottom-toolbar {
-    background-color: #fff;
-    border-top: 1px solid #e0e0e0;
-    display: flex;
-    flex-direction: column;
-    max-height: 160px;
-    transition: max-height 0.3s ease;
-}
 
-.bottom-toolbar.collapsed {
-    max-height: 72px;
-}
-
-.tools-wrapper {
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-}
-
-.tools-categories {
-    display: flex;
-    gap: 0.5rem;
-    padding: 0.5rem 1rem;
-    border-bottom: 1px solid #e0e0e0;
-    overflow-x: auto;
-    scrollbar-width: thin;
-}
-
-.category-button {
-    padding: 0.5rem 1rem;
-    border: none;
-    background: none;
-    color: #5F6368;
-    cursor: pointer;
-    white-space: nowrap;
-    border-radius: 16px;
-    transition: all 0.2s;
-}
-
-.category-button:hover {
-    background-color: rgba(0, 0, 0, 0.04);
-}
-
-.category-button.active {
-    background-color: #1a73e8;
-    color: white;
-}
-
-.tools-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    padding: 0.5rem 1rem;
-    overflow-y: auto;
-    max-height: 120px;
-    scrollbar-width: thin;
-}
-
-.toggle-button {
-    background: none;
-    border: none;
-    padding: 0.5rem;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
 
 /* Utility buttons */
 .utility-buttons {
@@ -239,6 +186,42 @@ body {
     font-size: 0.75rem;
     color: #666;
     text-align: center;
+    display: block;
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sidebar.collapsed .tool-button span {
+    display: none;
+}
+
+.tool-category {
+    margin-bottom: 16px;
+}
+
+.tool-category-header {
+    padding: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #5F6368;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.tool-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+    gap: 4px;
+    padding: 8px;
+}
+
+.sidebar.collapsed .tool-grid {
+    grid-template-columns: 1fr;
+}
+
+.sidebar.collapsed .tool-category-header {
+    display: none;
 }
 
 /* Touch support */

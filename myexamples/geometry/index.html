@@ -43,15 +43,24 @@
     <div class="main-container">
         <!-- Left Sidebar -->
         <div id="sidebar" class="sidebar">
-            <div class="sidebar-tabs">
-                <button class="tab-button active" data-tab="algebra">Algebra</button>
-                <button class="tab-button" data-tab="tools">Tools</button>
+            <div class="tools-wrapper">
+                <div class="tools-header">
+                    <h2>Tools</h2>
+                    <button id="collapseTools" class="icon-button">
+                        <img src="icons/collapse.svg" alt="Collapse">
+                    </button>
+                </div>
+                <div class="tools-container">
+                    <!-- Tool categories and buttons will be populated dynamically -->
+                </div>
             </div>
-            <div class="tab-content" id="algebraView">
-                <!-- Algebra view content will be populated dynamically -->
-            </div>
-            <div class="tab-content hidden" id="toolsView">
-                <!-- Tools will be populated dynamically -->
+            <div class="algebra-wrapper hidden">
+                <div class="algebra-header">
+                    <h2>Algebra</h2>
+                </div>
+                <div id="algebraView" class="algebra-container">
+                    <!-- Algebra view content will be populated dynamically -->
+                </div>
             </div>
         </div>
 
@@ -59,27 +68,7 @@
         <div class="canvas-container">
             <div id="jxgbox" class="jxgbox"></div>
             
-            <!-- Bottom Toolbar -->
-            <div class="bottom-toolbar">
-                <div class="tools-wrapper">
-                    <div class="tools-categories">
-                        <button class="category-button active" data-category="basic">Basic</button>
-                        <button class="category-button" data-category="construct">Construct</button>
-                        <button class="category-button" data-category="measure">Measure</button>
-                        <button class="category-button" data-category="lines">Lines</button>
-                        <button class="category-button" data-category="circles">Circles</button>
-                        <button class="category-button" data-category="polygons">Polygons</button>
-                        <button class="category-button" data-category="transform">Transform</button>
-                        <button class="category-button" data-category="media">Media</button>
-                    </div>
-                    <div class="tools-container">
-                        <!-- Tool buttons will be populated dynamically -->
-                    </div>
-                </div>
-                <button id="toggleTools" class="toggle-button">
-                    <img src="icons/more.svg" alt="More tools">
-                </button>
-            </div>
+
         </div>
 
         <!-- Right Utility Buttons -->

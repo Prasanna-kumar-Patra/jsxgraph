@@ -7,25 +7,28 @@ class GeometryUI {
     }
 
     setupSidebar() {
-        // Setup tab switching
-        const tabs = document.querySelectorAll('.tab-button');
-        tabs.forEach(tab => {
-            tab.addEventListener('click', () => {
-                // Remove active class from all tabs
-                tabs.forEach(t => t.classList.remove('active'));
-                
-                // Add active class to clicked tab
-                tab.classList.add('active');
+        // Setup collapse button
+        const collapseButton = document.getElementById('collapseTools');
+        const sidebar = document.getElementById('sidebar');
+        
+        collapseButton.addEventListener('click', () => {
+            sidebar.classList.toggle('collapsed');
+            const img = collapseButton.querySelector('img');
+            if (sidebar.classList.contains('collapsed')) {
+                img.style.transform = 'rotate(180deg)';
+            } else {
+                img.style.transform = 'rotate(0deg)';
+            }
+        });
 
-                // Hide all tab content
-                document.querySelectorAll('.tab-content').forEach(content => {
-                    content.classList.add('hidden');
-                });
-
-                // Show selected tab content
-                const tabId = tab.getAttribute('data-tab');
-                document.getElementById(tabId + 'View').classList.remove('hidden');
-            });
+        // Setup algebra view toggle
+        const menuToggle = document.getElementById('menuToggle');
+        const algebraWrapper = document.querySelector('.algebra-wrapper');
+        const toolsWrapper = document.querySelector('.tools-wrapper');
+        
+        menuToggle.addEventListener('click', () => {
+            algebraWrapper.classList.toggle('hidden');
+            toolsWrapper.classList.toggle('hidden');
         });
     }
 
@@ -33,26 +36,32 @@ class GeometryUI {
         const toolsContainer = document.querySelector('.tools-container');
         
         // Create tool buttons for each category
-        Object.values(CONFIG.tools).forEach(category => {
+        Object.entries(CONFIG.tools).forEach(([key, category]) => {
+            // Skip non-category entries like 'status'
+            if (!category.tools) return;
+            
+            // Create category section
+            const section = document.createElement('div');
+            section.className = 'tool-category';
+            
+            // Create category header
+            const header = document.createElement('div');
+            header.className = 'tool-category-header';
+            header.textContent = category.name;
+            section.appendChild(header);
+            
+            // Create tools grid
+            const grid = document.createElement('div');
+            grid.className = 'tool-grid';
+            
+            // Create tools for this category
             category.tools.forEach(tool => {
                 const button = this.createToolButton(tool);
-                toolsContainer.appendChild(button);
+                grid.appendChild(button);
             });
-        });
-
-        // Setup toggle button
-        const toggleButton = document.getElementById('toggleTools');
-        toggleButton.addEventListener('click', () => {
-            const img = toggleButton.querySelector('img');
-            if (img.src.includes('more')) {
-                img.src = 'icons/less.svg';
-                img.alt = 'Less tools';
-                toolsContainer.style.maxHeight = 'none';
-            } else {
-                img.src = 'icons/more.svg';
-                img.alt = 'More tools';
-                toolsContainer.style.maxHeight = '72px';
-            }
+            
+            section.appendChild(grid);
+            toolsContainer.appendChild(section);
         });
     }
 
