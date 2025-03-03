@@ -162,28 +162,23 @@ class GeometryTools {
             case 'circle_radius':
             case 'circle_three_points':
                 if (this.toolState === CONFIG.tools.status.PENDING) {
+                    // Starting point for all circle types
+                    const centerPoint = this.board.create('point', coords);
+                    this.points.push(centerPoint);
+                    
                     if (this.currentTool === 'circle_radius') {
                         const radius = parseFloat(prompt('Enter circle radius:', '5'));
                         if (!isNaN(radius)) {
-                            this.points.push(this.board.create('point', coords));
-                            this.board.create('circle', [this.points[0], radius]);
+                            this.board.create('circle', [centerPoint, radius]);
+                            this.points = [];
+                            this.toolState = CONFIG.tools.status.PENDING;
+                        } else {
+                            centerPoint.remove();
                             this.points = [];
                         }
                     } else {
-                        this.points.push(this.board.create('point', coords));
                         this.toolState = CONFIG.tools.status.ACTIVE;
                     }
-                } else if (this.currentTool === 'circle_three_points' && this.points.length < 2) {
-                    this.points.push(this.board.create('point', coords));
-                } else {
-                    this.points.push(this.board.create('point', coords));
-                    if (this.currentTool === 'circle') {
-                        this.board.create('circle', this.points);
-                    } else {
-                        this.board.create('circumcircle', this.points);
-                    }
-                    this.points = [];
-                    this.toolState = CONFIG.tools.status.PENDING;
                 }
                 break;
                 
@@ -493,22 +488,49 @@ class GeometryTools {
             case 'circle':
             case 'circle_radius':
             case 'circle_three_points':
-                this.tempObjects.push(this.board.create('point', coords, {visible: false}));
-                if (this.currentTool === 'circle_three_points' && this.points.length === 2) {
-                    this.tempObjects.push(this.board.create('circumcircle', 
-                        [this.points[0], this.points[1], this.tempObjects[0]], {dash: 2}));
-                } else {
-                    const radius = this.currentTool === 'circle_radius' ? this.fixedRadius :
-                        Math.sqrt(Math.pow(coords[0] - this.points[0].X(), 2) + Math.pow(coords[1] - this.points[0].Y(), 2));
-                    this.tempObjects.push(this.board.create('circle', [this.points[0], radius], {dash: 2}));
+                if (this.points.length === 1 && this.toolState === CONFIG.tools.status.ACTIVE) {
+                    this.tempObjects.push(this.board.create('point', coords, {visible: false}));
                     
-                    // Show radius value
                     if (this.currentTool === 'circle') {
+                        // Show preview for regular circle
+                        const radius = Math.sqrt(
+                            Math.pow(coords[0] - this.points[0].X(), 2) + 
+                            Math.pow(coords[1] - this.points[0].Y(), 2)
+                        );
+                        
+                        // Show radius line
+                        this.tempObjects.push(this.board.create('segment', 
+                            [this.points[0], this.tempObjects[0]], {dash: 2}));
+                        
+                        // Show circle preview
+                        this.tempObjects.push(this.board.create('circle', 
+                            [this.points[0], radius], {dash: 2}));
+                        
+                        // Show radius value
                         this.tempObjects.push(this.board.create('text', [
                             (this.points[0].X() + coords[0])/2,
                             (this.points[0].Y() + coords[1])/2,
-                            `r = ${radius.toFixed(2)}`
+                            `r = ${radius.toFixed(1)}`
                         ], {fontSize: 12}));
+                    } else if (this.currentTool === 'circle_three_points') {
+                        // Show preview for three-point circle
+                        const p3 = this.board.create('point', [
+                            coords[0] + (coords[1] - this.points[0].Y()),
+                            coords[1] - (coords[0] - this.points[0].X())
+                        ], {visible: false});
+                        this.tempObjects.push(p3);
+                        
+                        // Show guide lines
+                        this.tempObjects.push(this.board.create('segment', 
+                            [this.points[0], this.tempObjects[0]], {dash: 2}));
+                        this.tempObjects.push(this.board.create('segment', 
+                            [this.tempObjects[0], p3], {dash: 2}));
+                        this.tempObjects.push(this.board.create('segment', 
+                            [p3, this.points[0]], {dash: 2}));
+                        
+                        // Show circle preview
+                        this.tempObjects.push(this.board.create('circumcircle', 
+                            [this.points[0], this.tempObjects[0], p3], {dash: 2}));
                     }
                 }
                 break;
@@ -700,8 +722,9 @@ class GeometryTools {
             return false;
         }
         
-        // Handle rectangle and triangle completion
-        if ((this.currentTool === 'rectangle' || this.currentTool === 'triangle') && 
+        // Handle shape completion on mouse up
+        if ((this.currentTool === 'rectangle' || this.currentTool === 'triangle' || 
+             this.currentTool === 'circle' || this.currentTool === 'circle_three_points') && 
             this.points.length === 1 && this.toolState === CONFIG.tools.status.ACTIVE) {
             try {
                 if (this.currentTool === 'rectangle') {
@@ -726,7 +749,7 @@ class GeometryTools {
                     ], {fontSize: 12});
                     
                     Logger.debug('Created rectangle', { width, height });
-                } else { // triangle
+                } else if (this.currentTool === 'triangle') {
                     const p1 = this.points[0];
                     const p2 = this.board.create('point', coords);
                     
@@ -751,6 +774,36 @@ class GeometryTools {
                     ], {fontSize: 12});
                     
                     Logger.debug('Created triangle', { sideLength: dist });
+                } else if (this.currentTool === 'circle') {
+                    const p1 = this.points[0];
+                    const radius = Math.sqrt(
+                        Math.pow(coords[0] - p1.X(), 2) +
+                        Math.pow(coords[1] - p1.Y(), 2)
+                    );
+                    
+                    const circle = this.board.create('circle', [p1, radius]);
+                    if (!circle) throw new Error('Failed to create circle');
+                    
+                    // Show radius value
+                    this.board.create('text', [
+                        (p1.X() + coords[0])/2,
+                        (p1.Y() + coords[1])/2,
+                        `r = ${radius.toFixed(1)}`
+                    ], {fontSize: 12});
+                    
+                    Logger.debug('Created circle', { radius });
+                } else if (this.currentTool === 'circle_three_points') {
+                    const p1 = this.points[0];
+                    const p2 = this.board.create('point', coords);
+                    const p3 = this.board.create('point', [
+                        coords[0] + (coords[1] - p1.Y()),
+                        coords[1] - (coords[0] - p1.X())
+                    ]);
+                    
+                    const circle = this.board.create('circumcircle', [p1, p2, p3]);
+                    if (!circle) throw new Error('Failed to create three-point circle');
+                    
+                    Logger.debug('Created three-point circle');
                 }
                 
                 this.points = [];
