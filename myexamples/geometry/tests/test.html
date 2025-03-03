@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSXGraph Geometry Tool Tests</title>
+    
+    <!-- JSXGraph CSS and JS -->
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/jsxgraph@1.5.0/distrib/jsxgraph.css" />
+    <script src="https://cdn.jsdelivr.net/npm/jsxgraph@1.5.0/distrib/jsxgraphcore.js"></script>
+    
+    <!-- Touch Events Support -->
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+    
+    <style>
+        #jxgbox {
+            width: 800px;
+            height: 800px;
+            margin: 20px auto;
+        }
+        #status {
+            width: 800px;
+            margin: 20px auto;
+            padding: 10px;
+            border: 1px solid #ccc;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div id="jxgbox" class="jxgbox"></div>
+    <div id="status"></div>
+
+    <!-- Application Scripts -->
+    <script src="../js/config.js"></script>
+    <script src="../js/tools.js"></script>
+    <script src="tool_tests.js"></script>
+
+    <script>
+        // Override console.log to also write to status div
+        const oldLog = console.log;
+        console.log = function(message) {
+            const status = document.getElementById('status');
+            status.textContent += message + '\n';
+            oldLog.apply(console, arguments);
+        };
+    </script>
+</body>
+</html>
