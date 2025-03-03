@@ -883,26 +883,46 @@ class GeometryTools {
                                 const transform = this.board.create('transform', [angle, center], {type: 'rotate'});
                                 transform.bindTo(newObj);
                             } else if (this.currentTool === 'translate') {
-                                // Create translation vector and transform
-                                const dx = coords[0] - obj.X();
-                                const dy = coords[1] - obj.Y();
+                                // For translation, we need to handle points and lines differently
+                                let startX, startY;
+                                if (obj.elType === 'point') {
+                                    startX = obj.X();
+                                    startY = obj.Y();
+                                } else if (obj.elType === 'line' || obj.elType === 'segment') {
+                                    // Use midpoint of line as reference
+                                    startX = (obj.point1.X() + obj.point2.X()) / 2;
+                                    startY = (obj.point1.Y() + obj.point2.Y()) / 2;
+                                }
+                                
+                                // Calculate translation vector
+                                const dx = coords[0] - startX;
+                                const dy = coords[1] - startY;
+                                
+                                // Create and apply transform
                                 const transform = this.board.create('transform', [dx, dy], {type: 'translate'});
                                 transform.bindTo(newObj);
                                 
                                 // Show translation vector
-                                this.board.create('arrow', [obj, coords], {
+                                const startPoint = this.board.create('point', [startX, startY], {visible: false});
+                                const endPoint = this.board.create('point', coords, {visible: false});
+                                this.board.create('arrow', [startPoint, endPoint], {
                                     strokeColor: '#0000ff',
                                     strokeWidth: 2,
                                     dash: 2
                                 });
                             } else if (this.currentTool === 'reflect') {
-                                // Create reflection line and transform
-                                const reflectLine = this.board.create('line', 
-                                    [[coords[0] - 2, coords[1]], [coords[0] + 2, coords[1]]], {
-                                        name: 'l',
-                                        strokeColor: '#0000ff',
-                                        strokeWidth: 2
-                                    });
+                                // Create reflection line through the point
+                                const p1 = this.board.create('point', [coords[0] - 2, coords[1]], {visible: false});
+                                const p2 = this.board.create('point', [coords[0] + 2, coords[1]], {visible: false});
+                                const reflectLine = this.board.create('line', [p1, p2], {
+                                    name: 'l',
+                                    strokeColor: '#0000ff',
+                                    strokeWidth: 2,
+                                    straightFirst: true,
+                                    straightLast: true
+                                });
+                                
+                                // Create and apply transform
                                 const transform = this.board.create('transform', [reflectLine], {type: 'reflect'});
                                 transform.bindTo(newObj);
                             }
