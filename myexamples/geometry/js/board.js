@@ -1,43 +1,51 @@
 class GeometryBoard {
     constructor() {
         this.board = JXG.JSXGraph.initBoard('jxgbox', CONFIG.board);
-        this.currentTool = null;
-        this.toolStatus = CONFIG.tools.status.PENDING;
-        this.tempPoints = [];
-        this.tempObjects = [];
-        this.dragPoint = null;
-        this.touchStartTime = 0;
-        this.lastTapTime = 0;
+        
+        // Initialize tools
+        this.tools = new GeometryTools(this.board);
         
         // History for undo/redo
         this.history = [];
         this.historyIndex = -1;
+        this.maxHistory = 50; // Maximum number of history states to keep
+        
+        this.touchStartTime = 0;
+        this.lastTapTime = 0;
         
         this.setupEventHandlers();
         this.setupTouchHandlers();
+        
+        // Setup keyboard shortcuts for undo/redo
+        document.addEventListener('keydown', (e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
+                if (e.shiftKey) {
+                    this.redo();
+                } else {
+                    this.undo();
+                }
+                e.preventDefault();
+            }
+        });
     }
 
     setupEventHandlers() {
         // Mouse event handlers
         this.board.on('down', (e) => {
-            if (!this.currentTool) return;
-            
             const coords = this.board.getUsrCoordsOfMouse(e);
-            this.startToolAction(coords);
+            this.tools.handleDown(e);
         });
 
         this.board.on('move', (e) => {
-            if (!this.currentTool || this.toolStatus !== CONFIG.tools.status.ACTIVE) return;
-            
             const coords = this.board.getUsrCoordsOfMouse(e);
-            this.updateToolAction(coords);
+            this.tools.handleMove(e);
         });
 
         this.board.on('up', (e) => {
-            if (!this.currentTool || this.toolStatus !== CONFIG.tools.status.ACTIVE) return;
-            
             const coords = this.board.getUsrCoordsOfMouse(e);
-            this.completeToolAction(coords);
+            if (this.tools.handleUp(e)) {
+                this.addToHistory();
+            }
         });
 
         // Setup zoom buttons
@@ -52,9 +60,42 @@ class GeometryBoard {
     }
 
     setTool(toolId) {
-        this.currentTool = toolId;
-        this.tempPoints = [];
+        this.tools.setTool(toolId);
         this.board.update();
+    }
+    
+    // History management
+    addToHistory() {
+        const state = this.board.renderer.dumpToString();
+        
+        // Remove any states after current index
+        this.history = this.history.slice(0, this.historyIndex + 1);
+        
+        // Add new state
+        this.history.push(state);
+        this.historyIndex++;
+        
+        // Remove oldest states if exceeding maxHistory
+        if (this.history.length > this.maxHistory) {
+            this.history.shift();
+            this.historyIndex--;
+        }
+    }
+    
+    undo() {
+        if (this.historyIndex > 0) {
+            this.historyIndex--;
+            this.board.renderer.loadFromString(this.history[this.historyIndex]);
+            this.board.update();
+        }
+    }
+    
+    redo() {
+        if (this.historyIndex < this.history.length - 1) {
+            this.historyIndex++;
+            this.board.renderer.loadFromString(this.history[this.historyIndex]);
+            this.board.update();
+        }
     }
 
     setupTouchHandlers() {
