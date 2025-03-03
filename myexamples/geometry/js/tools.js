@@ -46,20 +46,37 @@ class GeometryTools {
 
     // Set the current tool
     setTool(toolId) {
+        Logger.info(`Setting tool: ${toolId}`);
         this.currentTool = toolId;
         this.toolState = CONFIG.tools.status.PENDING;
         this.points = [];
         this.selectedObjects = [];
         this.clearTempObjects();
         this.board.update();
+        Logger.debug('Tool state reset', {
+            tool: toolId,
+            state: this.toolState,
+            points: this.points.length,
+            selectedObjects: this.selectedObjects.length
+        });
     }
 
     // Handle mouse/touch down event
     handleDown(e) {
-        if (!this.currentTool) return;
+        if (!this.currentTool) {
+            Logger.debug('No tool selected, ignoring down event');
+            return;
+        }
         
         const coords = this.board.getUsrCoordsOfMouse(e);
         const clickedObjects = this.board.getAllObjectsUnderMouse(e);
+        
+        Logger.debug('Handle down event', {
+            tool: this.currentTool,
+            coords,
+            clickedObjects: clickedObjects.map(obj => obj.elType),
+            state: this.toolState
+        });
         
         // Start dragging for move tool
         if (this.currentTool === 'move' && clickedObjects.length > 0) {
@@ -73,8 +90,10 @@ class GeometryTools {
                 break;
                 
             case 'point':
+                Logger.debug('Creating point', { coords });
                 const point = this.board.create('point', coords);
                 this.lastPoint = point;
+                this.toolState = CONFIG.tools.status.PENDING; // Reset state after creating point
                 break;
                 
             case 'line':
@@ -316,18 +335,31 @@ class GeometryTools {
 
     // Handle mouse/touch move event
     handleMove(e) {
-        if (!this.currentTool) return;
+        if (!this.currentTool) {
+            Logger.debug('No tool selected, ignoring move event');
+            return;
+        }
         
         const coords = this.board.getUsrCoordsOfMouse(e);
+        Logger.debug('Handle move event', {
+            tool: this.currentTool,
+            coords,
+            isDragging: this.isDragging,
+            state: this.toolState
+        });
         
         // Handle move tool dragging
         if (this.currentTool === 'move' && this.isDragging) {
+            Logger.debug('Moving object');
             // JSXGraph handles the actual movement
             return;
         }
         
         // Don't show previews unless we're in an active state
-        if (this.toolState !== CONFIG.tools.status.ACTIVE) return;
+        if (this.toolState !== CONFIG.tools.status.ACTIVE) {
+            Logger.debug('Tool not active, skipping preview');
+            return;
+        }
         
         // Clear any temporary objects
         this.clearTemporary();
@@ -477,15 +509,27 @@ class GeometryTools {
 
     // Handle mouse/touch up event
     handleUp(e) {
-        if (!this.currentTool) return;
+        if (!this.currentTool) {
+            Logger.debug('No tool selected, ignoring up event');
+            return false;
+        }
         
         const coords = this.board.getUsrCoordsOfMouse(e);
+        Logger.debug('Handle up event', {
+            tool: this.currentTool,
+            coords,
+            state: this.toolState,
+            points: this.points.length
+        });
         
         // End dragging for move tool
         if (this.currentTool === 'move') {
+            Logger.debug('Ending move drag');
             this.isDragging = false;
-            return;
+            return false;
         }
+        
+        let objectCreated = false;
         
         switch (this.currentTool) {
             case 'polygon':
@@ -495,16 +539,54 @@ class GeometryTools {
                     const dx = coords[0] - firstPoint.X();
                     const dy = coords[1] - firstPoint.Y();
                     if (Math.sqrt(dx*dx + dy*dy) < 0.5) { // Within 0.5 units
+                        Logger.debug('Closing polygon', { points: this.points.length });
                         this.board.create('polygon', this.points);
                         this.toolState = CONFIG.tools.status.PENDING;
                         this.points = [];
+                        objectCreated = true;
                     }
+                }
+                break;
+                
+            case 'point':
+                Logger.debug('Creating point', { coords });
+                this.board.create('point', coords);
+                objectCreated = true;
+                break;
+                
+            case 'line':
+            case 'segment':
+            case 'ray':
+            case 'vector':
+                if (this.points.length === 1) {
+                    Logger.debug('Creating line-type object', { type: this.currentTool });
+                    const point = this.board.create('point', coords);
+                    this.points.push(point);
+                    const props = {
+                        straightFirst: this.currentTool === 'line',
+                        straightLast: this.currentTool !== 'segment',
+                        lastArrow: this.currentTool === 'vector'
+                    };
+                    this.board.create('line', this.points, props);
+                    this.points = [];
+                    objectCreated = true;
+                } else {
+                    Logger.debug('Adding first point for line-type object');
+                    this.points.push(this.board.create('point', coords));
                 }
                 break;
         }
         
         // Clear any temporary objects
         this.clearTemporary();
+        
+        Logger.debug('Tool operation complete', {
+            tool: this.currentTool,
+            objectCreated,
+            remainingPoints: this.points.length
+        });
+        
+        return objectCreated;
     }
 
     // Clear temporary points and objects
