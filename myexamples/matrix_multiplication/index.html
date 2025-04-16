@@ -8,6 +8,25 @@
         href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>[ ]</text></svg>">
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/jsxgraph/distrib/jsxgraph.css" />
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/jsxgraph/distrib/jsxgraphcore.js"></script>
+    <script type="text/javascript"
+        src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/x-mathjax-config">
+        MathJax.Hub.Config({
+            tex2jax: {
+                inlineMath: [['$','$'], ['\\(','\\)']],
+                displayMath: [['$$','$$'], ['\\[','\\]']],
+                processEscapes: true
+            },
+            "HTML-CSS": { 
+                scale: 100,
+                linebreaks: { automatic: true },
+                styles: {
+                    ".MathJax_Display": { margin: "0" }
+                }
+            },
+            skipStartupTypeset: true
+        });
+    </script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -58,6 +77,7 @@
             gap: 20px;
             flex: 1;
             min-height: 0;
+            position: relative;
         }
 
         .board {
@@ -151,6 +171,141 @@
             font-size: 13px;
         }
 
+        .vector-info {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 14px;
+            font-family: monospace;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+            pointer-events: none;
+            z-index: 100;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            transform: translate(-50%, -50%);
+            white-space: nowrap;
+        }
+
+        .vector-info.v2-info {
+            color: #FF0000;
+        }
+
+        .vector-info.w2-info {
+            color: #008000;
+        }
+
+        .calculation-display {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px;
+            border-radius: 4px;
+            font-family: monospace;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            z-index: 100;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            bottom: 20px;
+            left: 20px;
+            width: calc(100% - 40px);
+            font-size: 14px;
+            line-height: 1.8;
+            display: none;
+        }
+
+        .calculation-display.show {
+            display: block;
+        }
+
+        .calculation-display h4 {
+            margin: 0 0 10px 0;
+            color: #2c3e50;
+            font-size: 16px;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+        }
+
+        .calculation-display .formula {
+            margin-bottom: 10px;
+            padding: 8px;
+            background: #f8f9fa;
+            border-radius: 3px;
+            min-height: 60px;
+            opacity: 1;
+            transition: opacity 0.2s ease-in-out;
+        }
+
+        .calculation-display .formula.loading {
+            opacity: 0;
+        }
+
+        .mjx-chtml {
+            outline: none;
+        }
+
+        .matrix {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            padding: 0 4px;
+        }
+
+        .matrix-row {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .matrix-cell {
+            width: 45px;
+            text-align: right;
+        }
+
+        .matrix-brackets {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            pointer-events: none;
+        }
+
+        .matrix-brackets::before,
+        .matrix-brackets::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: currentColor;
+        }
+
+        .matrix-brackets::before {
+            left: 0;
+        }
+
+        .matrix-brackets::after {
+            right: 0;
+        }
+
+        .matrix-equals {
+            margin: 0 8px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .vector-matrix {
+            display: inline-flex;
+            flex-direction: column;
+            position: relative;
+            padding: 0 4px;
+        }
+
+        .vector-cell {
+            width: 45px;
+            text-align: right;
+            padding: 2px 0;
+        }
+
         @media (max-width: 768px) {
             .boards-container {
                 flex-direction: column;
@@ -159,6 +314,16 @@
             .board {
                 min-height: 300px;
             }
+        }
+
+        .vector-coord-label {
+            font-family: monospace;
+            font-size: 14px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 4px 8px;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(0, 0, 0, 0.1);
         }
     </style>
 </head>
@@ -200,6 +365,13 @@
                     </div>
                     <div class="board-content">
                         <div id="box2"></div>
+                        <div class="vector-info v2-info" id="v2Coords"></div>
+                        <div class="vector-info w2-info" id="w2Coords"></div>
+                        <div class="calculation-display" id="matrixCalculation">
+                            <h4>Matrix Calculation</h4>
+                            <div class="formula" id="vCalculation"></div>
+                            <div class="formula" id="wCalculation"></div>
+                        </div>
                         <div id="transformedInfo" class="info-tooltip">
                             <h3>Transformed Vectors</h3>
                             <ul>
@@ -235,6 +407,7 @@
                 <ul>
                     <li>See how the vectors change in real-time in the right board</li>
                     <li>Notice how different matrix values create different transformations</li>
+                    <li>Click this info button again to show/hide detailed matrix calculations</li>
                 </ul>
             </li>
             <li><strong>Experiment and Learn</strong>
@@ -250,22 +423,43 @@
     <script>
         function toggleTooltip(id) {
             const tooltip = document.getElementById(id);
-            tooltip.classList.toggle('show');
+            const matrixCalc = document.getElementById('matrixCalculation');
 
-            // Close other tooltips
-            document.querySelectorAll('.info-tooltip').forEach(t => {
-                if (t.id !== id) {
-                    t.classList.remove('show');
+            // Special handling for main instructions
+            if (id === 'instructionsInfo') {
+                if (tooltip.classList.contains('show')) {
+                    tooltip.classList.remove('show');
+                    matrixCalc.classList.remove('show');
+                } else {
+                    tooltip.classList.add('show');
+                    matrixCalc.classList.add('show');
+                    // Force update calculations when showing
+                    updateMatrixCalculations();
                 }
-            });
+            } else {
+                tooltip.classList.toggle('show');
+                // Close other tooltips
+                document.querySelectorAll('.info-tooltip').forEach(t => {
+                    if (t.id !== id) {
+                        t.classList.remove('show');
+                    }
+                });
+            }
         }
 
         // Close tooltips when clicking outside
         document.addEventListener('click', function (event) {
+            const matrixCalc = document.getElementById('matrixCalculation');
+            const instructionsInfo = document.getElementById('instructionsInfo');
+
             if (!event.target.closest('.info-button') && !event.target.closest('.info-tooltip')) {
                 document.querySelectorAll('.info-tooltip').forEach(t => {
                     t.classList.remove('show');
                 });
+                // Only hide matrix calculations if instructions are also being hidden
+                if (!instructionsInfo.classList.contains('show')) {
+                    matrixCalc.classList.remove('show');
+                }
             }
         });
 
@@ -274,7 +468,7 @@
             const container = document.querySelector('.board-content');
             const width = container.offsetWidth;
             const height = container.offsetHeight;
-            const size = Math.min(width, height) * 0.9; // 90% of the smaller dimension
+            const size = Math.min(width, height) * 0.9;
 
             var b1 = JXG.JSXGraph.initBoard('box1', {
                 boundingbox: [-7.5, 7.5, 12.5, -7.5],
@@ -290,39 +484,39 @@
             var a = b1.create('slider', [[-5, -2], [5, -2], [-5, 1, 5]], {
                 name: 'a',
                 snapWidth: 0.1,
-                fillColor: '#FF0000',  // Bright Red for x-coordinate transformation
+                fillColor: '#FF0000',
                 strokeColor: '#CC0000'
             });
             var b = b1.create('slider', [[-5, -3], [5, -3], [-5, 0, 5]], {
                 name: 'b',
                 snapWidth: 0.1,
-                fillColor: '#0000FF',  // Bright Blue for y-coordinate influence on x
+                fillColor: '#0000FF',
                 strokeColor: '#0000CC'
             });
             var c = b1.create('slider', [[-5, -4], [5, -4], [-5, 0, 5]], {
                 name: 'c',
                 snapWidth: 0.1,
-                fillColor: '#FFA500',  // Bright Orange for x-coordinate influence on y
+                fillColor: '#FFA500',
                 strokeColor: '#CC8400'
             });
             var d = b1.create('slider', [[-5, -5], [5, -5], [-5, 1, 5]], {
                 name: 'd',
                 snapWidth: 0.1,
-                fillColor: '#008000',  // Bright Green for y-coordinate transformation
+                fillColor: '#008000',
                 strokeColor: '#006600'
             });
 
             // Create points with high-contrast colors
             var v = b1.create('point', [2, 2], {
-                size: 5,  // Increased size for better visibility
+                size: 5,
                 name: 'v',
-                fillColor: '#FF0000',  // Bright Red for x-coordinate
+                fillColor: '#FF0000',
                 strokeColor: '#CC0000'
             });
             var w = b1.create('point', [-2, 1], {
-                size: 5,  // Increased size for better visibility
+                size: 5,
                 name: 'w',
-                fillColor: '#008000',  // Bright Green for y-coordinate
+                fillColor: '#008000',
                 strokeColor: '#006600'
             });
 
@@ -332,14 +526,14 @@
                 straightLast: false,
                 lastArrow: true,
                 strokeColor: '#FF0000',
-                strokeWidth: 3  // Increased width for better visibility
+                strokeWidth: 3
             });
             var wa = b1.create('line', [[0, 0], w], {
                 straightFirst: false,
                 straightLast: false,
                 lastArrow: true,
                 strokeColor: '#008000',
-                strokeWidth: 3  // Increased width for better visibility
+                strokeWidth: 3
             });
             b1.unsuspendUpdate();
 
@@ -348,7 +542,8 @@
                 axis: true,
                 grid: true,
                 showNavigation: true,
-                showCopyright: false
+                showCopyright: false,
+                keepaspectratio: true
             });
             b1.addChild(b2);
             b2.suspendUpdate();
@@ -358,19 +553,35 @@
                 function () { return a.Value() * v.X() + b.Value() * v.Y(); },
                 function () { return c.Value() * v.X() + d.Value() * v.Y(); }], {
                 face: '[]',
-                size: 5,  // Increased size for better visibility
-                name: "v'",
+                size: 0,
+                name: function () {
+                    return `v' = (${(this.X()).toFixed(2)}, ${(this.Y()).toFixed(2)})`;
+                },
                 fillColor: '#FF0000',
-                strokeColor: '#CC0000'
+                strokeColor: '#CC0000',
+                fixed: true,
+                label: {
+                    offset: [10, 10],
+                    color: '#FF0000',
+                    cssClass: 'vector-coord-label'
+                }
             });
             var w2 = b2.create('point', [
                 function () { return a.Value() * w.X() + b.Value() * w.Y(); },
                 function () { return c.Value() * w.X() + d.Value() * w.Y(); }], {
                 face: '[]',
-                size: 5,  // Increased size for better visibility
-                name: "w'",
+                size: 0,
+                name: function () {
+                    return `w' = (${(this.X()).toFixed(2)}, ${(this.Y()).toFixed(2)})`;
+                },
                 fillColor: '#008000',
-                strokeColor: '#006600'
+                strokeColor: '#006600',
+                fixed: true,
+                label: {
+                    offset: [10, -10],
+                    color: '#008000',
+                    cssClass: 'vector-coord-label'
+                }
             });
 
             // Create transformed lines with high-contrast colors
@@ -379,14 +590,14 @@
                 straightLast: false,
                 lastArrow: true,
                 strokeColor: '#FF0000',
-                strokeWidth: 3  // Increased width for better visibility
+                strokeWidth: 3
             });
             var wa2 = b2.create('line', [[0, 0], w2], {
                 straightFirst: false,
                 straightLast: false,
                 lastArrow: true,
                 strokeColor: '#008000',
-                strokeWidth: 3  // Increased width for better visibility
+                strokeWidth: 3
             });
 
             // Create a more visually appealing matrix display with high-contrast colors
@@ -398,9 +609,76 @@
                     '<span style="color: #008000">' + (d.Value()).toFixed(2) + ' |</span>' +
                     '</div>';
             }], {
-                fontSize: 18,  // Increased font size
+                fontSize: 18,
                 anchorX: 'middle'
             });
+
+            // Add coordinate displays to board2
+            const v2Coords = document.getElementById('v2Coords');
+            const w2Coords = document.getElementById('w2Coords');
+            const vCalculation = document.getElementById('vCalculation');
+            const wCalculation = document.getElementById('wCalculation');
+            b2.addChild(v2Coords);
+            b2.addChild(w2Coords);
+            b2.addChild(vCalculation);
+            b2.addChild(wCalculation);
+
+            // Function to update matrix calculations
+            function updateMatrixCalculations() {
+                const v2X = a.Value() * v.X() + b.Value() * v.Y();
+                const v2Y = c.Value() * v.X() + d.Value() * v.Y();
+                const w2X = a.Value() * w.X() + b.Value() * w.Y();
+                const w2Y = c.Value() * w.X() + d.Value() * w.Y();
+
+                // Add loading state
+                vCalculation.classList.add('loading');
+                wCalculation.classList.add('loading');
+
+                // Prepare LaTeX content with step-by-step calculations
+                const vLatex = `<div style="color: #FF0000">
+                    \\[\\mathbf{v'} = \\begin{bmatrix}${a.Value().toFixed(2)} & ${b.Value().toFixed(2)} \\\\ ${c.Value().toFixed(2)} & ${d.Value().toFixed(2)}\\end{bmatrix}\\begin{bmatrix}${v.X().toFixed(2)} \\\\ ${v.Y().toFixed(2)}\\end{bmatrix}\\]
+                    \\[= \\begin{bmatrix}
+                    (${a.Value().toFixed(2)} \\times ${v.X().toFixed(2)}) + (${b.Value().toFixed(2)} \\times ${v.Y().toFixed(2)}) \\\\
+                    (${c.Value().toFixed(2)} \\times ${v.X().toFixed(2)}) + (${d.Value().toFixed(2)} \\times ${v.Y().toFixed(2)})
+                    \\end{bmatrix}\\]
+                    \\[= \\begin{bmatrix}
+                    ${(a.Value() * v.X()).toFixed(2)} + ${(b.Value() * v.Y()).toFixed(2)} \\\\
+                    ${(c.Value() * v.X()).toFixed(2)} + ${(d.Value() * v.Y()).toFixed(2)}
+                    \\end{bmatrix} = \\begin{bmatrix}${v2X.toFixed(2)} \\\\ ${v2Y.toFixed(2)}\\end{bmatrix}\\]</div>`;
+
+                const wLatex = `<div style="color: #008000">
+                    \\[\\mathbf{w'} = \\begin{bmatrix}${a.Value().toFixed(2)} & ${b.Value().toFixed(2)} \\\\ ${c.Value().toFixed(2)} & ${d.Value().toFixed(2)}\\end{bmatrix}\\begin{bmatrix}${w.X().toFixed(2)} \\\\ ${w.Y().toFixed(2)}\\end{bmatrix}\\]
+                    \\[= \\begin{bmatrix}
+                    (${a.Value().toFixed(2)} \\times ${w.X().toFixed(2)}) + (${b.Value().toFixed(2)} \\times ${w.Y().toFixed(2)}) \\\\
+                    (${c.Value().toFixed(2)} \\times ${w.X().toFixed(2)}) + (${d.Value().toFixed(2)} \\times ${w.Y().toFixed(2)})
+                    \\end{bmatrix}\\]
+                    \\[= \\begin{bmatrix}
+                    ${(a.Value() * w.X()).toFixed(2)} + ${(b.Value() * w.Y()).toFixed(2)} \\\\
+                    ${(c.Value() * w.X()).toFixed(2)} + ${(d.Value() * w.Y()).toFixed(2)}
+                    \\end{bmatrix} = \\begin{bmatrix}${w2X.toFixed(2)} \\\\ ${w2Y.toFixed(2)}\\end{bmatrix}\\]</div>`;
+
+                // Update content and render LaTeX
+                requestAnimationFrame(() => {
+                    vCalculation.innerHTML = vLatex;
+                    wCalculation.innerHTML = wLatex;
+
+                    if (window.MathJax) {
+                        MathJax.Hub.Queue(
+                            ["Typeset", MathJax.Hub, vCalculation],
+                            ["Typeset", MathJax.Hub, wCalculation],
+                            () => {
+                                // Remove loading state after render
+                                vCalculation.classList.remove('loading');
+                                wCalculation.classList.remove('loading');
+                            }
+                        );
+                    }
+                });
+            }
+
+            // Make updateMatrixCalculations available globally
+            window.updateMatrixCalculations = updateMatrixCalculations;
+
             b2.unsuspendUpdate();
         }
 
