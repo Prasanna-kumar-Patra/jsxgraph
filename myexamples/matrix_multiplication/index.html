@@ -129,10 +129,25 @@
             align-items: center;
             justify-content: center;
             transition: background-color 0.3s;
+            margin-left: 5px;
         }
 
         .info-button:hover {
             background: #2980b9;
+        }
+
+        .info-button.result {
+            background: #e74c3c;
+        }
+
+        .info-button.result:hover {
+            background: #c0392b;
+        }
+
+        .header-buttons {
+            display: flex;
+            gap: 5px;
+            margin-left: 10px;
         }
 
         .info-tooltip {
@@ -209,10 +224,13 @@
             font-size: 14px;
             line-height: 1.8;
             display: none;
+            opacity: 0;
+            transition: opacity 0.2s ease-in-out;
         }
 
         .calculation-display.show {
             display: block;
+            opacity: 1;
         }
 
         .calculation-display h4 {
@@ -229,12 +247,6 @@
             background: #f8f9fa;
             border-radius: 3px;
             min-height: 60px;
-            opacity: 1;
-            transition: opacity 0.2s ease-in-out;
-        }
-
-        .calculation-display .formula.loading {
-            opacity: 0;
         }
 
         .mjx-chtml {
@@ -332,7 +344,12 @@
     <div class="header">
         <h1>
             Interactive Matrix Transformation
-            <button class="info-button" onclick="toggleTooltip('instructionsInfo')">i</button>
+            <div class="header-buttons">
+                <button class="info-button result" onclick="toggleTooltip('matrixCalculation')"
+                    title="Show Matrix Calculations">R</button>
+                <button class="info-button" onclick="toggleTooltip('instructionsInfo')"
+                    title="Show Instructions">i</button>
+            </div>
         </h1>
     </div>
 
@@ -421,23 +438,32 @@
     </div>
 
     <script>
-        function toggleTooltip(id) {
-            const tooltip = document.getElementById(id);
-            const matrixCalc = document.getElementById('matrixCalculation');
+        // Global variables for matrix elements and vectors
+        let a, b, c, d, v, w;
 
-            // Special handling for main instructions
-            if (id === 'instructionsInfo') {
-                if (tooltip.classList.contains('show')) {
-                    tooltip.classList.remove('show');
-                    matrixCalc.classList.remove('show');
-                } else {
-                    tooltip.classList.add('show');
-                    matrixCalc.classList.add('show');
-                    // Force update calculations when showing
-                    updateMatrixCalculations();
-                }
+        // Initialize boards when the page loads and on resize
+        window.addEventListener('load', function () {
+            initBoards();
+            // Pre-render matrix calculations
+            updateMatrixCalculations();
+        });
+        window.addEventListener('resize', initBoards);
+
+        function toggleTooltip(id) {
+            const element = document.getElementById(id);
+
+            if (id === 'matrixCalculation') {
+                // Handle matrix calculation display
+                element.classList.toggle('show');
+                // Close instructions if open
+                document.getElementById('instructionsInfo').classList.remove('show');
             } else {
-                tooltip.classList.toggle('show');
+                // Handle regular tooltips
+                element.classList.toggle('show');
+                // Close matrix calculations if showing instructions
+                if (id === 'instructionsInfo') {
+                    document.getElementById('matrixCalculation').classList.remove('show');
+                }
                 // Close other tooltips
                 document.querySelectorAll('.info-tooltip').forEach(t => {
                     if (t.id !== id) {
@@ -447,23 +473,54 @@
             }
         }
 
-        // Close tooltips when clicking outside
-        document.addEventListener('click', function (event) {
-            const matrixCalc = document.getElementById('matrixCalculation');
-            const instructionsInfo = document.getElementById('instructionsInfo');
+        // Function to update matrix calculations
+        function updateMatrixCalculations() {
+            if (!a || !b || !c || !d || !v || !w) return; // Guard against undefined variables
 
-            if (!event.target.closest('.info-button') && !event.target.closest('.info-tooltip')) {
-                document.querySelectorAll('.info-tooltip').forEach(t => {
-                    t.classList.remove('show');
-                });
-                // Only hide matrix calculations if instructions are also being hidden
-                if (!instructionsInfo.classList.contains('show')) {
-                    matrixCalc.classList.remove('show');
-                }
+            const v2X = a.Value() * v.X() + b.Value() * v.Y();
+            const v2Y = c.Value() * v.X() + d.Value() * v.Y();
+            const w2X = a.Value() * w.X() + b.Value() * w.Y();
+            const w2Y = c.Value() * w.X() + d.Value() * w.Y();
+
+            // Prepare LaTeX content with step-by-step calculations
+            const vLatex = `<div style="color: #FF0000">
+                \\[\\mathbf{v'} = \\begin{bmatrix}${a.Value().toFixed(2)} & ${b.Value().toFixed(2)} \\\\ ${c.Value().toFixed(2)} & ${d.Value().toFixed(2)}\\end{bmatrix}\\begin{bmatrix}${v.X().toFixed(2)} \\\\ ${v.Y().toFixed(2)}\\end{bmatrix}\\]
+                \\[= \\begin{bmatrix}
+                (${a.Value().toFixed(2)} \\times ${v.X().toFixed(2)}) + (${b.Value().toFixed(2)} \\times ${v.Y().toFixed(2)}) \\\\
+                (${c.Value().toFixed(2)} \\times ${v.X().toFixed(2)}) + (${d.Value().toFixed(2)} \\times ${v.Y().toFixed(2)})
+                \\end{bmatrix}\\]
+                \\[= \\begin{bmatrix}
+                ${(a.Value() * v.X()).toFixed(2)} + ${(b.Value() * v.Y()).toFixed(2)} \\\\
+                ${(c.Value() * v.X()).toFixed(2)} + ${(d.Value() * v.Y()).toFixed(2)}
+                \\end{bmatrix} = \\begin{bmatrix}${v2X.toFixed(2)} \\\\ ${v2Y.toFixed(2)}\\end{bmatrix}\\]</div>`;
+
+            const wLatex = `<div style="color: #008000">
+                \\[\\mathbf{w'} = \\begin{bmatrix}${a.Value().toFixed(2)} & ${b.Value().toFixed(2)} \\\\ ${c.Value().toFixed(2)} & ${d.Value().toFixed(2)}\\end{bmatrix}\\begin{bmatrix}${w.X().toFixed(2)} \\\\ ${w.Y().toFixed(2)}\\end{bmatrix}\\]
+                \\[= \\begin{bmatrix}
+                (${a.Value().toFixed(2)} \\times ${w.X().toFixed(2)}) + (${b.Value().toFixed(2)} \\times ${w.Y().toFixed(2)}) \\\\
+                (${c.Value().toFixed(2)} \\times ${w.X().toFixed(2)}) + (${d.Value().toFixed(2)} \\times ${w.Y().toFixed(2)})
+                \\end{bmatrix}\\]
+                \\[= \\begin{bmatrix}
+                ${(a.Value() * w.X()).toFixed(2)} + ${(b.Value() * w.Y()).toFixed(2)} \\\\
+                ${(c.Value() * w.X()).toFixed(2)} + ${(d.Value() * w.Y()).toFixed(2)}
+                \\end{bmatrix} = \\begin{bmatrix}${w2X.toFixed(2)} \\\\ ${w2Y.toFixed(2)}\\end{bmatrix}\\]</div>`;
+
+            // Update content and render LaTeX
+            vCalculation.innerHTML = vLatex;
+            wCalculation.innerHTML = wLatex;
+
+            if (window.MathJax) {
+                MathJax.Hub.Queue(
+                    ["Typeset", MathJax.Hub, vCalculation],
+                    ["Typeset", MathJax.Hub, wCalculation]
+                );
             }
-        });
+        }
 
-        // Initialize JSXGraph boards with responsive dimensions
+        // Make updateMatrixCalculations available globally
+        window.updateMatrixCalculations = updateMatrixCalculations;
+
+        // Update calculations when sliders change
         function initBoards() {
             const container = document.querySelector('.board-content');
             const width = container.offsetWidth;
@@ -481,25 +538,25 @@
             b1.suspendUpdate();
 
             // Create sliders with high-contrast, classroom-friendly colors
-            var a = b1.create('slider', [[-5, -2], [5, -2], [-5, 1, 5]], {
+            a = b1.create('slider', [[-5, -2], [5, -2], [-5, 1, 5]], {
                 name: 'a',
                 snapWidth: 0.1,
                 fillColor: '#FF0000',
                 strokeColor: '#CC0000'
             });
-            var b = b1.create('slider', [[-5, -3], [5, -3], [-5, 0, 5]], {
+            b = b1.create('slider', [[-5, -3], [5, -3], [-5, 0, 5]], {
                 name: 'b',
                 snapWidth: 0.1,
                 fillColor: '#0000FF',
                 strokeColor: '#0000CC'
             });
-            var c = b1.create('slider', [[-5, -4], [5, -4], [-5, 0, 5]], {
+            c = b1.create('slider', [[-5, -4], [5, -4], [-5, 0, 5]], {
                 name: 'c',
                 snapWidth: 0.1,
                 fillColor: '#FFA500',
                 strokeColor: '#CC8400'
             });
-            var d = b1.create('slider', [[-5, -5], [5, -5], [-5, 1, 5]], {
+            d = b1.create('slider', [[-5, -5], [5, -5], [-5, 1, 5]], {
                 name: 'd',
                 snapWidth: 0.1,
                 fillColor: '#008000',
@@ -507,13 +564,13 @@
             });
 
             // Create points with high-contrast colors
-            var v = b1.create('point', [2, 2], {
+            v = b1.create('point', [2, 2], {
                 size: 5,
                 name: 'v',
                 fillColor: '#FF0000',
                 strokeColor: '#CC0000'
             });
-            var w = b1.create('point', [-2, 1], {
+            w = b1.create('point', [-2, 1], {
                 size: 5,
                 name: 'w',
                 fillColor: '#008000',
@@ -623,68 +680,18 @@
             b2.addChild(vCalculation);
             b2.addChild(wCalculation);
 
-            // Function to update matrix calculations
-            function updateMatrixCalculations() {
-                const v2X = a.Value() * v.X() + b.Value() * v.Y();
-                const v2Y = c.Value() * v.X() + d.Value() * v.Y();
-                const w2X = a.Value() * w.X() + b.Value() * w.Y();
-                const w2Y = c.Value() * w.X() + d.Value() * w.Y();
-
-                // Add loading state
-                vCalculation.classList.add('loading');
-                wCalculation.classList.add('loading');
-
-                // Prepare LaTeX content with step-by-step calculations
-                const vLatex = `<div style="color: #FF0000">
-                    \\[\\mathbf{v'} = \\begin{bmatrix}${a.Value().toFixed(2)} & ${b.Value().toFixed(2)} \\\\ ${c.Value().toFixed(2)} & ${d.Value().toFixed(2)}\\end{bmatrix}\\begin{bmatrix}${v.X().toFixed(2)} \\\\ ${v.Y().toFixed(2)}\\end{bmatrix}\\]
-                    \\[= \\begin{bmatrix}
-                    (${a.Value().toFixed(2)} \\times ${v.X().toFixed(2)}) + (${b.Value().toFixed(2)} \\times ${v.Y().toFixed(2)}) \\\\
-                    (${c.Value().toFixed(2)} \\times ${v.X().toFixed(2)}) + (${d.Value().toFixed(2)} \\times ${v.Y().toFixed(2)})
-                    \\end{bmatrix}\\]
-                    \\[= \\begin{bmatrix}
-                    ${(a.Value() * v.X()).toFixed(2)} + ${(b.Value() * v.Y()).toFixed(2)} \\\\
-                    ${(c.Value() * v.X()).toFixed(2)} + ${(d.Value() * v.Y()).toFixed(2)}
-                    \\end{bmatrix} = \\begin{bmatrix}${v2X.toFixed(2)} \\\\ ${v2Y.toFixed(2)}\\end{bmatrix}\\]</div>`;
-
-                const wLatex = `<div style="color: #008000">
-                    \\[\\mathbf{w'} = \\begin{bmatrix}${a.Value().toFixed(2)} & ${b.Value().toFixed(2)} \\\\ ${c.Value().toFixed(2)} & ${d.Value().toFixed(2)}\\end{bmatrix}\\begin{bmatrix}${w.X().toFixed(2)} \\\\ ${w.Y().toFixed(2)}\\end{bmatrix}\\]
-                    \\[= \\begin{bmatrix}
-                    (${a.Value().toFixed(2)} \\times ${w.X().toFixed(2)}) + (${b.Value().toFixed(2)} \\times ${w.Y().toFixed(2)}) \\\\
-                    (${c.Value().toFixed(2)} \\times ${w.X().toFixed(2)}) + (${d.Value().toFixed(2)} \\times ${w.Y().toFixed(2)})
-                    \\end{bmatrix}\\]
-                    \\[= \\begin{bmatrix}
-                    ${(a.Value() * w.X()).toFixed(2)} + ${(b.Value() * w.Y()).toFixed(2)} \\\\
-                    ${(c.Value() * w.X()).toFixed(2)} + ${(d.Value() * w.Y()).toFixed(2)}
-                    \\end{bmatrix} = \\begin{bmatrix}${w2X.toFixed(2)} \\\\ ${w2Y.toFixed(2)}\\end{bmatrix}\\]</div>`;
-
-                // Update content and render LaTeX
-                requestAnimationFrame(() => {
-                    vCalculation.innerHTML = vLatex;
-                    wCalculation.innerHTML = wLatex;
-
-                    if (window.MathJax) {
-                        MathJax.Hub.Queue(
-                            ["Typeset", MathJax.Hub, vCalculation],
-                            ["Typeset", MathJax.Hub, wCalculation],
-                            () => {
-                                // Remove loading state after render
-                                vCalculation.classList.remove('loading');
-                                wCalculation.classList.remove('loading');
-                            }
-                        );
-                    }
-                });
-            }
-
-            // Make updateMatrixCalculations available globally
-            window.updateMatrixCalculations = updateMatrixCalculations;
+            // Add event listeners for slider changes
+            a.on('drag', updateMatrixCalculations);
+            b.on('drag', updateMatrixCalculations);
+            c.on('drag', updateMatrixCalculations);
+            d.on('drag', updateMatrixCalculations);
+            a.on('up', updateMatrixCalculations);
+            b.on('up', updateMatrixCalculations);
+            c.on('up', updateMatrixCalculations);
+            d.on('up', updateMatrixCalculations);
 
             b2.unsuspendUpdate();
         }
-
-        // Initialize boards when the page loads and on resize
-        window.addEventListener('load', initBoards);
-        window.addEventListener('resize', initBoards);
     </script>
 </body>
 
