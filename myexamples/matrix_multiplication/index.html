@@ -4,29 +4,60 @@
 <head>
     <title>Matrix Multiplication - Interactive Learning</title>
     <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>[ ]</text></svg>">
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/jsxgraph/distrib/jsxgraph.css" />
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/jsxgraph/distrib/jsxgraphcore.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
+            margin: 0;
+            padding: 0;
             background-color: #f5f5f5;
-        }
-
-        .container {
+            min-height: 100vh;
             display: flex;
             flex-direction: column;
+        }
+
+        .header {
+            background: white;
+            padding: 20px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .header h1 {
+            margin: 0;
+            color: #2c3e50;
+            display: flex;
             align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .main-container {
+            flex: 1;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .interactive-container {
+            display: flex;
+            flex-direction: column;
             gap: 20px;
+            height: calc(100vh - 200px);
+            min-height: 600px;
         }
 
         .boards-container {
             display: flex;
             justify-content: center;
-            gap: 40px;
-            flex-wrap: wrap;
+            gap: 20px;
+            flex: 1;
+            min-height: 0;
         }
 
         .board {
@@ -35,6 +66,10 @@
             border-radius: 10px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
             position: relative;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
         }
 
         .board-title {
@@ -48,35 +83,17 @@
             gap: 10px;
         }
 
+        .board-content {
+            flex: 1;
+            min-height: 0;
+            position: relative;
+            overflow: hidden;
+        }
+
         #box1,
         #box2 {
-            width: 500px;
-            height: 500px;
-        }
-
-        .instructions {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            margin-top: 20px;
-            max-width: 800px;
-        }
-
-        .instructions h2 {
-            color: #2c3e50;
-            margin-top: 0;
-        }
-
-        .instructions ol {
-            line-height: 1.6;
-        }
-
-        .matrix-display {
-            text-align: center;
-            font-size: 1.2em;
-            margin: 20px 0;
-            font-family: monospace;
+            width: 100%;
+            height: 100%;
         }
 
         .info-button {
@@ -104,11 +121,14 @@
             padding: 15px;
             border-radius: 5px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-            max-width: 300px;
+            max-width: 250px;
             z-index: 1000;
             display: none;
             font-size: 14px;
             line-height: 1.5;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
         }
 
         .info-tooltip.show {
@@ -118,71 +138,113 @@
         .info-tooltip h3 {
             margin-top: 0;
             color: #2c3e50;
+            font-size: 16px;
         }
 
         .info-tooltip ul {
-            padding-left: 20px;
+            padding-left: 15px;
             margin: 10px 0;
         }
 
         .info-tooltip li {
             margin-bottom: 8px;
+            font-size: 13px;
+        }
+
+        @media (max-width: 768px) {
+            .boards-container {
+                flex-direction: column;
+            }
+
+            .board {
+                min-height: 300px;
+            }
         }
     </style>
 </head>
 
 <body>
-    <div class="container">
-        <h1>Interactive Matrix Transformation</h1>
+    <div class="header">
+        <h1>
+            Interactive Matrix Transformation
+            <button class="info-button" onclick="toggleTooltip('instructionsInfo')">i</button>
+        </h1>
+    </div>
 
-        <div class="boards-container">
-            <div class="board">
-                <div class="board-title">
-                    Original Vectors
-                    <button class="info-button" onclick="toggleTooltip('originalInfo')">i</button>
+    <div class="main-container">
+        <div class="interactive-container">
+            <div class="boards-container">
+                <div class="board">
+                    <div class="board-title">
+                        Original Vectors
+                        <button class="info-button" onclick="toggleTooltip('originalInfo')">i</button>
+                    </div>
+                    <div class="board-content">
+                        <div id="box1"></div>
+                        <div id="originalInfo" class="info-tooltip">
+                            <h3>Original Vectors</h3>
+                            <ul>
+                                <li><span style="color: #FF0000">Vector v (Red)</span>: x-coordinate transformation</li>
+                                <li><span style="color: #008000">Vector w (Green)</span>: y-coordinate transformation
+                                </li>
+                                <li>Starting positions before transformation</li>
+                                <li>Watch changes in real-time</li>
+                            </ul>
+                        </div>
+                    </div>
                 </div>
-                <div id="box1"></div>
-                <div id="originalInfo" class="info-tooltip">
-                    <h3>Original Vectors</h3>
-                    <ul>
-                        <li><span style="color: #FF0000">Vector v (Red)</span>: Represents the x-coordinate
-                            transformation</li>
-                        <li><span style="color: #008000">Vector w (Green)</span>: Represents the y-coordinate
-                            transformation</li>
-                        <li>These vectors show the starting positions before any transformation</li>
-                        <li>You can see how they change in real-time in the Transformed Vectors board</li>
-                    </ul>
-                </div>
-            </div>
-            <div class="board">
-                <div class="board-title">
-                    Transformed Vectors
-                    <button class="info-button" onclick="toggleTooltip('transformedInfo')">i</button>
-                </div>
-                <div id="box2"></div>
-                <div id="transformedInfo" class="info-tooltip">
-                    <h3>Transformed Vectors</h3>
-                    <ul>
-                        <li>Shows how the original vectors change after matrix multiplication</li>
-                        <li><span style="color: #FF0000">v' (Red)</span>: The transformed version of vector v</li>
-                        <li><span style="color: #008000">w' (Green)</span>: The transformed version of vector w</li>
-                        <li>The transformation is controlled by the matrix values (a, b, c, d)</li>
-                        <li>Watch how changing the matrix values affects these vectors</li>
-                    </ul>
+                <div class="board">
+                    <div class="board-title">
+                        Transformed Vectors
+                        <button class="info-button" onclick="toggleTooltip('transformedInfo')">i</button>
+                    </div>
+                    <div class="board-content">
+                        <div id="box2"></div>
+                        <div id="transformedInfo" class="info-tooltip">
+                            <h3>Transformed Vectors</h3>
+                            <ul>
+                                <li>Result after matrix multiplication</li>
+                                <li><span style="color: #FF0000">v' (Red)</span>: Transformed vector v</li>
+                                <li><span style="color: #008000">w' (Green)</span>: Transformed vector w</li>
+                                <li>Controlled by matrix values (a, b, c, d)</li>
+                            </ul>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
+    </div>
 
-        <div class="instructions">
-            <h2>How to Use This Interactive Tool</h2>
-            <ol>
-                <li>Observe the two vectors (v and w) in the left board</li>
-                <li>Use the sliders to change the transformation matrix values</li>
-                <li>Watch how the vectors transform in real-time in the right board</li>
-                <li>Try to understand how each matrix element affects the transformation</li>
-                <li>Experiment with different matrix values to see different transformations</li>
-            </ol>
-        </div>
+    <div id="instructionsInfo" class="info-tooltip"
+        style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); max-width: 500px;">
+        <h3>How to Use This Interactive Tool</h3>
+        <ol>
+            <li><strong>Observe the Original Vectors</strong>
+                <ul>
+                    <li>Look at the left board showing vectors v (red) and w (green)</li>
+                    <li>These represent the starting positions before transformation</li>
+                </ul>
+            </li>
+            <li><strong>Understand the Matrix Controls</strong>
+                <ul>
+                    <li>Use the sliders to change matrix values (a, b, c, d)</li>
+                    <li>Each value affects how the vectors transform</li>
+                </ul>
+            </li>
+            <li><strong>Watch the Transformation</strong>
+                <ul>
+                    <li>See how the vectors change in real-time in the right board</li>
+                    <li>Notice how different matrix values create different transformations</li>
+                </ul>
+            </li>
+            <li><strong>Experiment and Learn</strong>
+                <ul>
+                    <li>Try different matrix combinations</li>
+                    <li>Observe how each element affects the transformation</li>
+                    <li>Understand the relationship between matrix values and vector changes</li>
+                </ul>
+            </li>
+        </ol>
     </div>
 
     <script>
@@ -207,131 +269,144 @@
             }
         });
 
-        var b1 = JXG.JSXGraph.initBoard('box1', {
-            boundingbox: [-7.5, 7.5, 12.5, -7.5],
-            axis: true,
-            grid: true,
-            showNavigation: true,
-            showCopyright: false
-        });
-        b1.suspendUpdate();
+        // Initialize JSXGraph boards with responsive dimensions
+        function initBoards() {
+            const container = document.querySelector('.board-content');
+            const width = container.offsetWidth;
+            const height = container.offsetHeight;
+            const size = Math.min(width, height) * 0.9; // 90% of the smaller dimension
 
-        // Create sliders with high-contrast, classroom-friendly colors
-        var a = b1.create('slider', [[-5, -2], [5, -2], [-5, 1, 5]], {
-            name: 'a',
-            snapWidth: 0.1,
-            fillColor: '#FF0000',  // Bright Red for x-coordinate transformation
-            strokeColor: '#CC0000'
-        });
-        var b = b1.create('slider', [[-5, -3], [5, -3], [-5, 0, 5]], {
-            name: 'b',
-            snapWidth: 0.1,
-            fillColor: '#0000FF',  // Bright Blue for y-coordinate influence on x
-            strokeColor: '#0000CC'
-        });
-        var c = b1.create('slider', [[-5, -4], [5, -4], [-5, 0, 5]], {
-            name: 'c',
-            snapWidth: 0.1,
-            fillColor: '#FFA500',  // Bright Orange for x-coordinate influence on y
-            strokeColor: '#CC8400'
-        });
-        var d = b1.create('slider', [[-5, -5], [5, -5], [-5, 1, 5]], {
-            name: 'd',
-            snapWidth: 0.1,
-            fillColor: '#008000',  // Bright Green for y-coordinate transformation
-            strokeColor: '#006600'
-        });
+            var b1 = JXG.JSXGraph.initBoard('box1', {
+                boundingbox: [-7.5, 7.5, 12.5, -7.5],
+                axis: true,
+                grid: true,
+                showNavigation: true,
+                showCopyright: false,
+                keepaspectratio: true
+            });
+            b1.suspendUpdate();
 
-        // Create points with high-contrast colors
-        var v = b1.create('point', [2, 2], {
-            size: 5,  // Increased size for better visibility
-            name: 'v',
-            fillColor: '#FF0000',  // Bright Red for x-coordinate
-            strokeColor: '#CC0000'
-        });
-        var w = b1.create('point', [-2, 1], {
-            size: 5,  // Increased size for better visibility
-            name: 'w',
-            fillColor: '#008000',  // Bright Green for y-coordinate
-            strokeColor: '#006600'
-        });
+            // Create sliders with high-contrast, classroom-friendly colors
+            var a = b1.create('slider', [[-5, -2], [5, -2], [-5, 1, 5]], {
+                name: 'a',
+                snapWidth: 0.1,
+                fillColor: '#FF0000',  // Bright Red for x-coordinate transformation
+                strokeColor: '#CC0000'
+            });
+            var b = b1.create('slider', [[-5, -3], [5, -3], [-5, 0, 5]], {
+                name: 'b',
+                snapWidth: 0.1,
+                fillColor: '#0000FF',  // Bright Blue for y-coordinate influence on x
+                strokeColor: '#0000CC'
+            });
+            var c = b1.create('slider', [[-5, -4], [5, -4], [-5, 0, 5]], {
+                name: 'c',
+                snapWidth: 0.1,
+                fillColor: '#FFA500',  // Bright Orange for x-coordinate influence on y
+                strokeColor: '#CC8400'
+            });
+            var d = b1.create('slider', [[-5, -5], [5, -5], [-5, 1, 5]], {
+                name: 'd',
+                snapWidth: 0.1,
+                fillColor: '#008000',  // Bright Green for y-coordinate transformation
+                strokeColor: '#006600'
+            });
 
-        // Create lines with high-contrast colors and increased width
-        var va = b1.create('line', [[0, 0], v], {
-            straightFirst: false,
-            straightLast: false,
-            lastArrow: true,
-            strokeColor: '#FF0000',
-            strokeWidth: 3  // Increased width for better visibility
-        });
-        var wa = b1.create('line', [[0, 0], w], {
-            straightFirst: false,
-            straightLast: false,
-            lastArrow: true,
-            strokeColor: '#008000',
-            strokeWidth: 3  // Increased width for better visibility
-        });
-        b1.unsuspendUpdate();
+            // Create points with high-contrast colors
+            var v = b1.create('point', [2, 2], {
+                size: 5,  // Increased size for better visibility
+                name: 'v',
+                fillColor: '#FF0000',  // Bright Red for x-coordinate
+                strokeColor: '#CC0000'
+            });
+            var w = b1.create('point', [-2, 1], {
+                size: 5,  // Increased size for better visibility
+                name: 'w',
+                fillColor: '#008000',  // Bright Green for y-coordinate
+                strokeColor: '#006600'
+            });
 
-        var b2 = JXG.JSXGraph.initBoard('box2', {
-            boundingbox: [-7.5, 7.5, 12.5, -7.5],
-            axis: true,
-            grid: true,
-            showNavigation: true,
-            showCopyright: false
-        });
-        b1.addChild(b2);
-        b2.suspendUpdate();
+            // Create lines with high-contrast colors and increased width
+            var va = b1.create('line', [[0, 0], v], {
+                straightFirst: false,
+                straightLast: false,
+                lastArrow: true,
+                strokeColor: '#FF0000',
+                strokeWidth: 3  // Increased width for better visibility
+            });
+            var wa = b1.create('line', [[0, 0], w], {
+                straightFirst: false,
+                straightLast: false,
+                lastArrow: true,
+                strokeColor: '#008000',
+                strokeWidth: 3  // Increased width for better visibility
+            });
+            b1.unsuspendUpdate();
 
-        // Create transformed points with high-contrast colors
-        var v2 = b2.create('point', [
-            function () { return a.Value() * v.X() + b.Value() * v.Y(); },
-            function () { return c.Value() * v.X() + d.Value() * v.Y(); }], {
-            face: '[]',
-            size: 5,  // Increased size for better visibility
-            name: "v'",
-            fillColor: '#FF0000',
-            strokeColor: '#CC0000'
-        });
-        var w2 = b2.create('point', [
-            function () { return a.Value() * w.X() + b.Value() * w.Y(); },
-            function () { return c.Value() * w.X() + d.Value() * w.Y(); }], {
-            face: '[]',
-            size: 5,  // Increased size for better visibility
-            name: "w'",
-            fillColor: '#008000',
-            strokeColor: '#006600'
-        });
+            var b2 = JXG.JSXGraph.initBoard('box2', {
+                boundingbox: [-7.5, 7.5, 12.5, -7.5],
+                axis: true,
+                grid: true,
+                showNavigation: true,
+                showCopyright: false
+            });
+            b1.addChild(b2);
+            b2.suspendUpdate();
 
-        // Create transformed lines with high-contrast colors
-        var va2 = b2.create('line', [[0, 0], v2], {
-            straightFirst: false,
-            straightLast: false,
-            lastArrow: true,
-            strokeColor: '#FF0000',
-            strokeWidth: 3  // Increased width for better visibility
-        });
-        var wa2 = b2.create('line', [[0, 0], w2], {
-            straightFirst: false,
-            straightLast: false,
-            lastArrow: true,
-            strokeColor: '#008000',
-            strokeWidth: 3  // Increased width for better visibility
-        });
+            // Create transformed points with high-contrast colors
+            var v2 = b2.create('point', [
+                function () { return a.Value() * v.X() + b.Value() * v.Y(); },
+                function () { return c.Value() * v.X() + d.Value() * v.Y(); }], {
+                face: '[]',
+                size: 5,  // Increased size for better visibility
+                name: "v'",
+                fillColor: '#FF0000',
+                strokeColor: '#CC0000'
+            });
+            var w2 = b2.create('point', [
+                function () { return a.Value() * w.X() + b.Value() * w.Y(); },
+                function () { return c.Value() * w.X() + d.Value() * w.Y(); }], {
+                face: '[]',
+                size: 5,  // Increased size for better visibility
+                name: "w'",
+                fillColor: '#008000',
+                strokeColor: '#006600'
+            });
 
-        // Create a more visually appealing matrix display with high-contrast colors
-        var matrixDisplay = b2.create('text', [-6, -2, function () {
-            return '<div style="font-size: 1.4em; font-family: monospace; text-align: center; font-weight: bold;">' +
-                '<span style="color: #FF0000">| ' + (a.Value()).toFixed(2) + '</span>  ' +
-                '<span style="color: #0000FF">' + (b.Value()).toFixed(2) + ' |</span><br>' +
-                '<span style="color: #FFA500">| ' + (c.Value()).toFixed(2) + '</span>  ' +
-                '<span style="color: #008000">' + (d.Value()).toFixed(2) + ' |</span>' +
-                '</div>';
-        }], {
-            fontSize: 18,  // Increased font size
-            anchorX: 'middle'
-        });
-        b2.unsuspendUpdate();
+            // Create transformed lines with high-contrast colors
+            var va2 = b2.create('line', [[0, 0], v2], {
+                straightFirst: false,
+                straightLast: false,
+                lastArrow: true,
+                strokeColor: '#FF0000',
+                strokeWidth: 3  // Increased width for better visibility
+            });
+            var wa2 = b2.create('line', [[0, 0], w2], {
+                straightFirst: false,
+                straightLast: false,
+                lastArrow: true,
+                strokeColor: '#008000',
+                strokeWidth: 3  // Increased width for better visibility
+            });
+
+            // Create a more visually appealing matrix display with high-contrast colors
+            var matrixDisplay = b2.create('text', [-6, -2, function () {
+                return '<div style="font-size: 1.4em; font-family: monospace; text-align: center; font-weight: bold;">' +
+                    '<span style="color: #FF0000">| ' + (a.Value()).toFixed(2) + '</span>  ' +
+                    '<span style="color: #0000FF">' + (b.Value()).toFixed(2) + ' |</span><br>' +
+                    '<span style="color: #FFA500">| ' + (c.Value()).toFixed(2) + '</span>  ' +
+                    '<span style="color: #008000">' + (d.Value()).toFixed(2) + ' |</span>' +
+                    '</div>';
+            }], {
+                fontSize: 18,  // Increased font size
+                anchorX: 'middle'
+            });
+            b2.unsuspendUpdate();
+        }
+
+        // Initialize boards when the page loads and on resize
+        window.addEventListener('load', initBoards);
+        window.addEventListener('resize', initBoards);
     </script>
 </body>
 
